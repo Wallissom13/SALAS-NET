@@ -137,7 +137,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // Editar aluno
-  app.put("/api/students/:id", async (req, res) => {
+  app.patch("/api/students/:id", async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).send("Não autorizado");
     
     try {
