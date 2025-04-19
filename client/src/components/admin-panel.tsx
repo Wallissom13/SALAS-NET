@@ -3,7 +3,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Class, User } from "@shared/schema";
+import { Class, User, Student } from "@shared/schema";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -27,7 +27,16 @@ import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Loader2, CheckCircle } from "lucide-react";
+import { 
+  Loader2, 
+  CheckCircle, 
+  Pencil, 
+  Trash2, 
+  X, 
+  Save,
+  UserPlus,
+  Users
+} from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { 
   Table, 
@@ -43,12 +52,26 @@ import {
   XAxis,
   YAxis,
   CartesianGrid,
-  Tooltip,
+  Tooltip as RechartsTooltip,
   ResponsiveContainer,
   PieChart,
   Pie,
   Cell,
 } from "recharts";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 // Import schemas
 const importStudentsSchema = z.object({
@@ -93,6 +116,13 @@ export function AdminPanel() {
   
   const studentsWithManyReports = dashboardData?.reduce((acc: number, cls: any) => 
     acc + cls.students.filter((s: any) => s.reports.length >= 3).length, 0) || 0;
+  
+  // Student management state
+  const [isDeleteStudentDialogOpen, setIsDeleteStudentDialogOpen] = useState(false);
+  const [isEditStudentDialogOpen, setIsEditStudentDialogOpen] = useState(false);
+  const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
+  const [editStudentName, setEditStudentName] = useState("");
+  const [editStudentClass, setEditStudentClass] = useState<number | null>(null);
   
   // Setup forms
   const importForm = useForm<ImportStudentsFormValues>({
@@ -166,6 +196,54 @@ export function AdminPanel() {
     },
   });
   
+  const deleteStudentMutation = useMutation({
+    mutationFn: async (studentId: number) => {
+      const res = await apiRequest("DELETE", `/api/students/${studentId}`);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/dashboard"] });
+      setIsDeleteStudentDialogOpen(false);
+      setSelectedStudent(null);
+      
+      toast({
+        title: "Aluno excluído",
+        description: "O aluno foi excluído com sucesso",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Erro ao excluir aluno",
+        description: error.message || "Não foi possível excluir o aluno.",
+        variant: "destructive",
+      });
+    },
+  });
+  
+  const updateStudentMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: number; data: { name: string; classId: number } }) => {
+      const res = await apiRequest("PATCH", `/api/students/${id}`, data);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/dashboard"] });
+      setIsEditStudentDialogOpen(false);
+      setSelectedStudent(null);
+      
+      toast({
+        title: "Aluno atualizado",
+        description: "Os dados do aluno foram atualizados com sucesso",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Erro ao atualizar aluno",
+        description: error.message || "Não foi possível atualizar o aluno.",
+        variant: "destructive",
+      });
+    },
+  });
+  
   // Form submit handlers
   function onImportSubmit(values: ImportStudentsFormValues) {
     const names = values.studentsList
@@ -219,10 +297,150 @@ export function AdminPanel() {
     }
   ];
   
+  // Lista de todos os alunos (extraída do dashboardData)
+  const allStudents: Student[] = dashboardData?.reduce((acc: Student[], cls: any) => {
+    return [...acc, ...cls.students.map((student: any) => ({
+      id: student.id,
+      name: student.name,
+      classId: cls.id
+    }))];
+  }, []) || [];
+  
+  // Manipuladores de eventos
+  const handleEditStudent = (student: Student) => {
+    setSelectedStudent(student);
+    setEditStudentName(student.name);
+    setEditStudentClass(student.classId);
+    setIsEditStudentDialogOpen(true);
+  };
+  
+  const handleDeleteStudent = (student: Student) => {
+    setSelectedStudent(student);
+    setIsDeleteStudentDialogOpen(true);
+  };
+  
+  const handleUpdateStudent = () => {
+    if (!selectedStudent || !editStudentName.trim() || !editStudentClass) return;
+    
+    updateStudentMutation.mutate({
+      id: selectedStudent.id,
+      data: {
+        name: editStudentName.trim(),
+        classId: editStudentClass
+      }
+    });
+  };
+    
   return (
     <div>
       <h2 className="text-2xl font-bold text-gray-800 mb-6">Painel de Administração</h2>
       <p className="text-gray-600 mb-8">Gerencie alunos, logins e permissões do sistema.</p>
+      
+      {/* Dialog de exclusão de aluno */}
+      <Dialog open={isDeleteStudentDialogOpen} onOpenChange={setIsDeleteStudentDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Excluir Aluno</DialogTitle>
+            <DialogDescription>
+              Tem certeza que deseja excluir o aluno {selectedStudent?.name}? 
+              Esta ação não pode ser desfeita.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setIsDeleteStudentDialogOpen(false)}
+              disabled={deleteStudentMutation.isPending}
+            >
+              Cancelar
+            </Button>
+            <Button 
+              variant="destructive"
+              onClick={() => selectedStudent && deleteStudentMutation.mutate(selectedStudent.id)}
+              disabled={deleteStudentMutation.isPending}
+            >
+              {deleteStudentMutation.isPending ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Excluindo...
+                </>
+              ) : (
+                "Excluir Aluno"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      
+      {/* Dialog de edição de aluno */}
+      <Dialog open={isEditStudentDialogOpen} onOpenChange={setIsEditStudentDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Editar Aluno</DialogTitle>
+            <DialogDescription>
+              Edite as informações do aluno abaixo.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <label htmlFor="edit-name" className="text-sm font-medium">
+                Nome do Aluno
+              </label>
+              <Input
+                id="edit-name"
+                value={editStudentName}
+                onChange={(e) => setEditStudentName(e.target.value)}
+                placeholder="Nome do aluno"
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <label htmlFor="edit-class" className="text-sm font-medium">
+                Turma
+              </label>
+              <Select 
+                value={editStudentClass?.toString() || ""} 
+                onValueChange={(value) => setEditStudentClass(parseInt(value))}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione a turma" />
+                </SelectTrigger>
+                <SelectContent>
+                  {classes?.map((cls) => (
+                    <SelectItem key={cls.id} value={cls.id.toString()}>
+                      {cls.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setIsEditStudentDialogOpen(false)}
+              disabled={updateStudentMutation.isPending}
+            >
+              Cancelar
+            </Button>
+            <Button 
+              onClick={handleUpdateStudent}
+              disabled={updateStudentMutation.isPending || !editStudentName.trim() || !editStudentClass}
+            >
+              {updateStudentMutation.isPending ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Salvando...
+                </>
+              ) : (
+                "Salvar Alterações"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
         {/* Statistics Card */}
