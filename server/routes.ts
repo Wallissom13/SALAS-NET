@@ -136,6 +136,61 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  // Editar aluno
+  app.put("/api/students/:id", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).send("Não autorizado");
+    
+    try {
+      const studentId = parseInt(req.params.id);
+      if (isNaN(studentId)) {
+        return res.status(400).send("ID de aluno inválido");
+      }
+      
+      const student = await storage.getStudent(studentId);
+      if (!student) {
+        return res.status(404).send("Aluno não encontrado");
+      }
+      
+      const validatedData = insertStudentSchema.parse(req.body);
+      
+      // Verify that the class exists
+      const classData = await storage.getClass(validatedData.classId);
+      if (!classData) {
+        return res.status(400).send("Turma não encontrada");
+      }
+      
+      const updatedStudent = await storage.updateStudent(studentId, validatedData);
+      res.json(updatedStudent);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ errors: error.errors });
+      }
+      res.status(500).send("Erro ao atualizar aluno");
+    }
+  });
+  
+  // Excluir aluno
+  app.delete("/api/students/:id", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).send("Não autorizado");
+    
+    try {
+      const studentId = parseInt(req.params.id);
+      if (isNaN(studentId)) {
+        return res.status(400).send("ID de aluno inválido");
+      }
+      
+      const student = await storage.getStudent(studentId);
+      if (!student) {
+        return res.status(404).send("Aluno não encontrado");
+      }
+      
+      await storage.deleteStudent(studentId);
+      res.status(200).send("Aluno removido com sucesso");
+    } catch (error) {
+      res.status(500).send("Erro ao excluir aluno");
+    }
+  });
+  
   // Reports API
   app.get("/api/reports", async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).send("Não autorizado");
