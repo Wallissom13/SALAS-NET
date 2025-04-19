@@ -91,7 +91,7 @@ export class DatabaseStorage implements IStorage {
           for (const student of students) {
             await this.deleteStudent(student.id);
           }
-          // Corrigido: Removendo usando o eq(column, value) para comparação
+          // Removendo a turma 9A
           await db.delete(classes).where(eq(classes.id, class9A.id));
         } catch (e) {
           console.error("Erro ao remover turma 9A:", e);
@@ -104,7 +104,7 @@ export class DatabaseStorage implements IStorage {
           for (const student of students) {
             await this.deleteStudent(student.id);
           }
-          // Corrigido: Removendo usando o eq(column, value) para comparação
+          // Removendo a turma 9C
           await db.delete(classes).where(eq(classes.id, class9C.id));
         } catch (e) {
           console.error("Erro ao remover turma 9C:", e);

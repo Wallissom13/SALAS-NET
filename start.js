@@ -1,39 +1,30 @@
+// Arquivo de inicialização para o Render
 const { spawn } = require('child_process');
-const path = require('path');
 
-// Configurar as variáveis de ambiente para produção
-process.env.NODE_ENV = process.env.NODE_ENV || 'production';
+// Função para executar um script
+function runScript(script) {
+  return new Promise((resolve, reject) => {
+    const child = spawn('node', [script], { stdio: 'inherit' });
+    
+    child.on('close', (code) => {
+      if (code !== 0) {
+        reject(new Error(`Script ${script} exited with code ${code}`));
+        return;
+      }
+      resolve();
+    });
+  });
+}
 
-// Comandos a serem executados
-const command = 'node';
-const args = ['-r', 'esbuild-register', 'server/index.ts'];
+// Iniciar o servidor
+async function startServer() {
+  try {
+    await runScript('./dist/index.js');
+  } catch (error) {
+    console.error('Error starting server:', error);
+    process.exit(1);
+  }
+}
 
-// Iniciar o processo
-const child = spawn(command, args, {
-  stdio: 'inherit',
-  cwd: process.cwd(),
-  env: process.env
-});
-
-// Lidar com o término do processo
-child.on('close', (code) => {
-  console.log(`Processo encerrado com código ${code}`);
-  process.exit(code);
-});
-
-// Lidar com erros
-child.on('error', (err) => {
-  console.error('Erro ao iniciar o processo:', err);
-  process.exit(1);
-});
-
-// Lidar com sinais do sistema
-process.on('SIGTERM', () => {
-  console.log('Recebido sinal SIGTERM, encerrando aplicação');
-  child.kill('SIGTERM');
-});
-
-process.on('SIGINT', () => {
-  console.log('Recebido sinal SIGINT, encerrando aplicação');
-  child.kill('SIGINT');
-});
+// Executar o servidor
+startServer();
