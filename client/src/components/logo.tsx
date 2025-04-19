@@ -1,19 +1,29 @@
 import React from "react";
+import logoImage from "../assets/logo.png";
 
 type LogoProps = {
   size?: 'small' | 'medium' | 'large';
+  showAnimation?: boolean;
 };
 
-export const Logo: React.FC<LogoProps> = ({ size = 'medium' }) => {
+export const Logo: React.FC<LogoProps> = ({ size = 'medium', showAnimation = true }) => {
   const sizeClasses = {
-    small: "h-8 w-8 text-lg",
-    medium: "h-10 w-10 text-xl",
-    large: "h-20 w-20 text-3xl",
+    small: "h-10 w-10",
+    medium: "h-16 w-16",
+    large: "h-24 w-24",
   };
 
+  const animationClass = showAnimation 
+    ? "animate-float" 
+    : "";
+
   return (
-    <div className={`${sizeClasses[size]} bg-primary rounded-full flex items-center justify-center`}>
-      <span className="text-white font-bold">CEPI</span>
+    <div className={`${animationClass} flex items-center justify-center`}>
+      <img 
+        src={logoImage} 
+        alt="CEPI Logo" 
+        className={`${sizeClasses[size]} object-contain`}
+      />
     </div>
   );
 };
