@@ -54,12 +54,13 @@ export class DatabaseStorage implements IStorage {
     if (process.env.DATABASE_URL) {
       const pool = new pg.Pool({
         connectionString: process.env.DATABASE_URL,
-        ssl: { rejectUnauthorized: false }
+        ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : undefined
       });
       
       this.sessionStore = new PostgresSessionStore({
         pool,
-        createTableIfMissing: true
+        createTableIfMissing: true,
+        tableName: 'session'
       });
     } else {
       this.sessionStore = new MemoryStore({
