@@ -135,170 +135,232 @@ export function ReportForm({ classes }: ReportFormProps) {
   
   return (
     <div>
-      <h2 className="text-2xl font-bold text-gray-800 mb-6">Enviar Relatório</h2>
-      <p className="text-gray-600 mb-8">Preencha o formulário abaixo para registrar uma ocorrência.</p>
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-8">
+        <div>
+          <h2 className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-700 to-indigo-700 mb-2">Registro de Ocorrências</h2>
+          <p className="text-gray-600">Preencha este formulário para documentar uma ocorrência com o aluno.</p>
+        </div>
+        
+        <div className="mt-4 md:mt-0">
+          <div className="inline-flex items-center justify-center space-x-2 bg-blue-50 px-4 py-2 rounded-lg text-blue-700 shadow-sm border border-blue-100">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+              <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+            </svg>
+            <span className="text-sm font-medium">Os relatórios são verificados diariamente</span>
+          </div>
+        </div>
+      </div>
       
-      <Card>
-        <CardContent className="p-6">
+      <Card className="shadow-lg border-0 overflow-hidden rounded-xl">
+        <div className="bg-gradient-to-r from-blue-600 to-indigo-700 py-4 px-6">
+          <h3 className="text-white text-lg font-semibold">Formulário de Ocorrência</h3>
+          <p className="text-blue-100 text-sm">Todos os campos marcados são obrigatórios</p>
+        </div>
+        
+        <CardContent className="p-6 sm:p-8">
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+              {/* Campos principais */}
+              <div className="bg-gray-50 p-4 sm:p-6 rounded-lg border border-gray-100">
+                <h4 className="text-sm font-medium text-gray-800 mb-4 flex items-center">
+                  <span className="flex items-center justify-center w-5 h-5 rounded-full bg-blue-100 text-blue-700 text-xs mr-2">1</span>
+                  Identificação
+                </h4>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <FormField
+                    control={form.control}
+                    name="classId"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-gray-700">Turma</FormLabel>
+                        <Select 
+                          onValueChange={field.onChange} 
+                          value={field.value}
+                        >
+                          <FormControl>
+                            <SelectTrigger className="bg-white border-gray-200 focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50">
+                              <SelectValue placeholder="Selecione a turma" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {classes.map((cls) => (
+                              <SelectItem key={cls.id} value={cls.id.toString()}>
+                                Turma {cls.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  
+                  <FormField
+                    control={form.control}
+                    name="studentId"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-gray-700">Aluno</FormLabel>
+                        <Select 
+                          onValueChange={field.onChange} 
+                          value={field.value}
+                          disabled={!classId}
+                        >
+                          <FormControl>
+                            <SelectTrigger className="bg-white border-gray-200 focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50">
+                              <SelectValue placeholder={
+                                classId ? "Selecione o aluno" : "Selecione primeiro a turma"
+                              } />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {students.length > 0 ? (
+                              students.map((student) => (
+                                <SelectItem key={student.id} value={student.id.toString()}>
+                                  {student.name}
+                                </SelectItem>
+                              ))
+                            ) : (
+                              <div className="px-2 py-4 text-center text-sm text-gray-500">
+                                {classId ? "Nenhum aluno encontrado nesta turma" : "Selecione uma turma primeiro"}
+                              </div>
+                            )}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+              </div>
+              
+              {/* Detalhes da ocorrência */}
+              <div className="bg-gray-50 p-4 sm:p-6 rounded-lg border border-gray-100">
+                <h4 className="text-sm font-medium text-gray-800 mb-4 flex items-center">
+                  <span className="flex items-center justify-center w-5 h-5 rounded-full bg-blue-100 text-blue-700 text-xs mr-2">2</span>
+                  Detalhes da Ocorrência
+                </h4>
+                
                 <FormField
                   control={form.control}
-                  name="classId"
+                  name="content"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Turma</FormLabel>
-                      <Select 
-                        onValueChange={field.onChange} 
-                        value={field.value}
-                      >
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Selecione a turma" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {classes.map((cls) => (
-                            <SelectItem key={cls.id} value={cls.id.toString()}>
-                              {cls.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <FormLabel className="text-gray-700">Descreva o Ocorrido</FormLabel>
+                      <FormControl>
+                        <Textarea 
+                          placeholder="Descreva com detalhes o que aconteceu, incluindo local e contexto..." 
+                          rows={5}
+                          className="bg-white border-gray-200 focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50 resize-none"
+                          {...field}
+                        />
+                      </FormControl>
+                      <p className="text-xs text-gray-500 mt-1">
+                        Descreva de forma clara e objetiva, com detalhes relevantes sobre o comportamento observado.
+                      </p>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
                 
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+                  <FormField
+                    control={form.control}
+                    name="date"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-gray-700">Data da Ocorrência</FormLabel>
+                        <FormControl>
+                          <Input 
+                            type="date" 
+                            className="bg-white border-gray-200 focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50"
+                            {...field} 
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  
+                  <FormField
+                    control={form.control}
+                    name="time"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-gray-700">Horário</FormLabel>
+                        <FormControl>
+                          <Input 
+                            type="time" 
+                            className="bg-white border-gray-200 focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50"
+                            {...field} 
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+              </div>
+              
+              {/* Informações do relator */}
+              <div className="bg-gray-50 p-4 sm:p-6 rounded-lg border border-gray-100">
+                <h4 className="text-sm font-medium text-gray-800 mb-4 flex items-center">
+                  <span className="flex items-center justify-center w-5 h-5 rounded-full bg-blue-100 text-blue-700 text-xs mr-2">3</span>
+                  Identificação do Relator
+                </h4>
+              
                 <FormField
                   control={form.control}
-                  name="studentId"
+                  name="reporterType"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Aluno</FormLabel>
-                      <Select 
-                        onValueChange={field.onChange} 
-                        value={field.value}
-                        disabled={!classId}
-                      >
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder={
-                              classId ? "Selecione o aluno" : "Selecione primeiro a turma"
-                            } />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {students.map((student) => (
-                            <SelectItem key={student.id} value={student.id.toString()}>
-                              {student.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <FormLabel className="text-gray-700">Selecione Sua Função</FormLabel>
+                      <FormControl>
+                        <RadioGroup
+                          onValueChange={field.onChange}
+                          value={field.value}
+                          className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-2"
+                        >
+                          <div className="flex items-center space-x-2 bg-white p-3 rounded-md border border-gray-200 hover:border-blue-300 transition-colors cursor-pointer">
+                            <RadioGroupItem value="Líder" id="lider" />
+                            <label htmlFor="lider" className="cursor-pointer font-medium">Líder de Turma</label>
+                          </div>
+                          <div className="flex items-center space-x-2 bg-white p-3 rounded-md border border-gray-200 hover:border-blue-300 transition-colors cursor-pointer">
+                            <RadioGroupItem value="Vice" id="vice" />
+                            <label htmlFor="vice" className="cursor-pointer font-medium">Vice-Líder</label>
+                          </div>
+                          <div className="flex items-center space-x-2 bg-white p-3 rounded-md border border-gray-200 hover:border-blue-300 transition-colors cursor-pointer">
+                            <RadioGroupItem value="Professor" id="professor" />
+                            <label htmlFor="professor" className="cursor-pointer font-medium">Professor</label>
+                          </div>
+                        </RadioGroup>
+                      </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
               </div>
               
-              <FormField
-                control={form.control}
-                name="content"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Ocorrido</FormLabel>
-                    <FormControl>
-                      <Textarea 
-                        placeholder="Descreva o que aconteceu..." 
-                        rows={4}
-                        {...field}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <FormField
-                  control={form.control}
-                  name="date"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Data</FormLabel>
-                      <FormControl>
-                        <Input type="date" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                
-                <FormField
-                  control={form.control}
-                  name="time"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Hora</FormLabel>
-                      <FormControl>
-                        <Input type="time" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-              
-              <FormField
-                control={form.control}
-                name="reporterType"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Eu Sou</FormLabel>
-                    <FormControl>
-                      <RadioGroup
-                        onValueChange={field.onChange}
-                        value={field.value}
-                        className="flex flex-wrap gap-4"
-                      >
-                        <div className="flex items-center space-x-2">
-                          <RadioGroupItem value="Líder" id="lider" />
-                          <label htmlFor="lider">Líder</label>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                          <RadioGroupItem value="Vice" id="vice" />
-                          <label htmlFor="vice">Vice</label>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                          <RadioGroupItem value="Professor" id="professor" />
-                          <label htmlFor="professor">Professor</label>
-                        </div>
-                      </RadioGroup>
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              
+              {/* Mensagem de sucesso */}
               {successMessage && (
-                <Alert className="bg-green-100 text-green-700">
-                  <CheckCircle className="h-4 w-4" />
-                  <AlertDescription>{successMessage}</AlertDescription>
+                <Alert className="bg-green-50 border border-green-100 text-green-700 animate-pulse">
+                  <CheckCircle className="h-5 w-5 text-green-600" />
+                  <AlertDescription className="font-medium">{successMessage}</AlertDescription>
                 </Alert>
               )}
               
-              <div className="pt-2">
+              {/* Botão de envio */}
+              <div className="pt-2 flex justify-center sm:justify-end">
                 <Button 
                   type="submit" 
-                  className="w-full sm:w-auto"
+                  className="w-full sm:w-auto px-8 py-6 text-base bg-gradient-to-r from-blue-600 to-indigo-700 hover:from-blue-700 hover:to-indigo-800 transition-all shadow-md hover:shadow-lg"
                   disabled={reportMutation.isPending}
                 >
                   {reportMutation.isPending ? (
                     <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Enviando...
+                      <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                      Processando envio...
                     </>
                   ) : (
                     "Enviar Relatório"

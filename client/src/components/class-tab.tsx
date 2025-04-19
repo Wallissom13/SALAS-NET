@@ -404,9 +404,9 @@ function StudentCard({ student, getReporterBadgeColor, formatDateTime }: Student
                         <span className={`text-xs px-2 py-1 rounded-full mr-2 ${getReporterBadgeColor(report.reporterType)}`}>
                           {report.reporterType}
                         </span>
-                        <p className="text-xs text-gray-500">{formatDateTime(report.date || new Date())}</p>
+                        <p className="text-xs text-gray-500">{formatDateTime(report.date instanceof Date ? report.date : new Date())}</p>
                       </div>
-                      <p className="mt-1 text-gray-800 text-sm leading-relaxed">{report.description || report.content}</p>
+                      <p className="mt-1 text-gray-800 text-sm leading-relaxed">{report.description}</p>
                     </div>
                   </div>
                 </div>
