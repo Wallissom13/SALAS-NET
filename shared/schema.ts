@@ -1,12 +1,13 @@
-import { pgTable, text, serial, integer, boolean, timestamp } from "drizzle-orm/pg-core";
+import { pgTable, serial, text, boolean, timestamp, integer } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
+// Definição das tabelas
 export const users = pgTable("users", {
   id: serial("id").primaryKey(),
   username: text("username").notNull().unique(),
   password: text("password").notNull(),
-  isAdmin: boolean("is_admin").default(false).notNull(),
+  isAdmin: boolean("is_admin").default(false),
 });
 
 export const classes = pgTable("classes", {
@@ -22,14 +23,14 @@ export const students = pgTable("students", {
 
 export const reports = pgTable("reports", {
   id: serial("id").primaryKey(),
+  description: text("description").notNull(),
+  date: timestamp("date").defaultNow(),
   studentId: integer("student_id").notNull(),
-  content: text("content").notNull(),
-  date: timestamp("date").notNull(),
-  reporterType: text("reporter_type").notNull(), // "Líder", "Vice", or "Professor"
-  createdBy: integer("created_by").notNull(), // User ID
+  reporterName: text("reporter_name").notNull(),
+  reporterType: text("reporter_type").notNull(), // "teacher", "coordinator", "psychologist", "director"
 });
 
-// Insert schemas
+// Esquemas Zod para validação de inserção
 export const insertUserSchema = createInsertSchema(users).pick({
   username: true,
   password: true,
@@ -46,14 +47,14 @@ export const insertStudentSchema = createInsertSchema(students).pick({
 });
 
 export const insertReportSchema = createInsertSchema(reports).pick({
-  studentId: true,
-  content: true,
+  description: true,
   date: true,
+  studentId: true,
+  reporterName: true,
   reporterType: true,
-  createdBy: true,
 });
 
-// Types
+// Tipos TypeScript para os modelos
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type InsertClass = z.infer<typeof insertClassSchema>;
 export type InsertStudent = z.infer<typeof insertStudentSchema>;
@@ -64,7 +65,7 @@ export type Class = typeof classes.$inferSelect;
 export type Student = typeof students.$inferSelect;
 export type Report = typeof reports.$inferSelect;
 
-// Extended schemas with additional info
+// Tipos para dados combinados
 export type StudentWithReports = Student & { 
   reports: Report[],
   reportCount: number 
