@@ -79,20 +79,54 @@ export function ClassTab({ classData }: ClassTabProps) {
         </div>
       </div>
 
-      {/* Search Bar */}
-      <div className="mb-6">
-        <div className="flex items-center border border-gray-300 rounded-lg overflow-hidden bg-white">
-          <div className="px-3 py-2 text-gray-400">
-            <Search className="h-5 w-5" />
+      {/* Search Bar - versão aprimorada */}
+      <div className="mb-8">
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl shadow-sm border border-blue-100">
+          <div className="flex items-center flex-1 w-full">
+            <div className="relative w-full">
+              <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+                <Search className="h-4 w-4 text-blue-500" />
+              </div>
+              <Input 
+                type="text" 
+                className="pl-10 pr-4 py-2 border-blue-200 bg-white text-sm placeholder:text-gray-400 focus-visible:ring-1 focus-visible:ring-blue-300 w-full rounded-lg"
+                placeholder="Digite o nome do aluno para filtrar..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+              {searchTerm && (
+                <button 
+                  className="absolute inset-y-0 right-0 flex items-center pr-3"
+                  onClick={() => setSearchTerm('')}
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-gray-400 hover:text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              )}
+            </div>
           </div>
-          <Input 
-            type="text" 
-            className="border-0 py-2 px-2 focus-visible:ring-0 focus-visible:ring-offset-0"
-            placeholder="Buscar aluno..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
+          
+          <div className="hidden sm:flex items-center space-x-2 text-sm font-medium text-blue-700 bg-blue-100 px-3 py-1.5 rounded-lg">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+              <path d="M10 12a2 2 0 100-4 2 2 0 000 4z" />
+              <path fillRule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clipRule="evenodd" />
+            </svg>
+            <span className="font-bold">{classData.students.length}</span>
+            <span>alunos</span>
+            {filteredStudents.length < classData.students.length && (
+              <span className="ml-1 text-blue-500">({filteredStudents.length} filtrados)</span>
+            )}
+          </div>
         </div>
+        
+        {filteredStudents.length === 0 && searchTerm && (
+          <div className="mt-4 text-center p-2 bg-amber-50 border border-amber-100 rounded-lg">
+            <p className="text-amber-700 text-sm">
+              Nenhum aluno encontrado com "{searchTerm}". Tente outro termo de busca.
+            </p>
+          </div>
+        )}
       </div>
 
       {/* Students List */}
@@ -278,12 +312,22 @@ function StudentCard({ student, getReporterBadgeColor, formatDateTime }: Student
         </DialogContent>
       </Dialog>
     
-      <Card className="overflow-hidden hover:shadow-md transition">
-        <CardHeader className="px-5 py-4 border-b border-gray-200 flex justify-between items-center">
+      <Card className="overflow-hidden hover:shadow-lg transition-all duration-300 border border-gray-200 hover:border-blue-100 rounded-xl">
+        <CardHeader className={`px-5 py-4 border-b ${student.reportCount >= 3 ? 'bg-red-50 border-red-100' : student.reportCount === 2 ? 'bg-amber-50 border-amber-100' : 'bg-white border-gray-100'}`}>
           <div className="flex justify-between items-center w-full">
-            <h3 className={`font-semibold ${student.reportCount >= 3 ? 'text-red-600' : 'text-gray-800'}`}>
-              {student.name}
-            </h3>
+            <div className="flex items-center space-x-3">
+              {/* Avatar circular com iniciais do aluno */}
+              <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-medium ${student.reportCount >= 3 ? 'bg-red-500' : student.reportCount === 2 ? 'bg-amber-500' : 'bg-blue-500'}`}>
+                {student.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase()}
+              </div>
+              
+              <div>
+                <h3 className={`font-semibold ${student.reportCount >= 3 ? 'text-red-700' : student.reportCount === 2 ? 'text-amber-700' : 'text-gray-800'}`}>
+                  {student.name}
+                </h3>
+                <p className="text-xs text-gray-500">ID: {student.id}</p>
+              </div>
+            </div>
             
             <div className="flex items-center space-x-2">
               <BadgeCounter 
@@ -293,34 +337,40 @@ function StudentCard({ student, getReporterBadgeColor, formatDateTime }: Student
               
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon" className="h-8 w-8">
+                  <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full hover:bg-gray-100">
                     <MoreVertical className="h-4 w-4" />
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
+                <DropdownMenuContent align="end" className="w-48">
                   {/* Opções de admin apenas para usuários administradores */}
                   {window.userIsAdmin === true && (
                     <>
-                      <DropdownMenuItem onClick={() => {
-                        setEditName(student.name);
-                        setIsEditDialogOpen(true);
-                      }}>
-                        <Pencil className="mr-2 h-4 w-4" />
-                        Editar
+                      <DropdownMenuItem 
+                        onClick={() => {
+                          setEditName(student.name);
+                          setIsEditDialogOpen(true);
+                        }}
+                        className="flex items-center cursor-pointer"
+                      >
+                        <Pencil className="mr-2 h-4 w-4 text-blue-600" />
+                        <span>Editar Aluno</span>
                       </DropdownMenuItem>
                       <DropdownMenuSeparator />
                       <DropdownMenuItem
-                        className="text-red-600"
+                        className="text-red-600 flex items-center cursor-pointer"
                         onClick={() => setIsDeleteDialogOpen(true)}
                       >
                         <Trash2 className="mr-2 h-4 w-4" />
-                        Excluir
+                        <span>Excluir Aluno</span>
                       </DropdownMenuItem>
                     </>
                   )}
                   {/* Para usuários não-admin, exibir apenas visualização de relatórios */}
                   {window.userIsAdmin !== true && (
-                    <DropdownMenuItem onClick={() => setShowAllReports(!showAllReports)}>
+                    <DropdownMenuItem 
+                      onClick={() => setShowAllReports(!showAllReports)}
+                      className="cursor-pointer"
+                    >
                       {showAllReports ? "Ocultar relatórios" : "Ver todos relatórios"}
                     </DropdownMenuItem>
                   )}
@@ -329,38 +379,48 @@ function StudentCard({ student, getReporterBadgeColor, formatDateTime }: Student
             </div>
           </div>
         </CardHeader>
-        <CardContent className="p-5">
+        
+        <CardContent className="p-5 bg-gradient-to-b from-white via-white to-gray-50">
           {student.reportCount === 0 ? (
-            <p className="text-gray-500 text-center py-2">Nenhum relatório registrado.</p>
+            <div className="flex flex-col items-center justify-center py-6 text-center">
+              <div className="w-12 h-12 mb-3 rounded-full bg-blue-50 flex items-center justify-center">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+              </div>
+              <p className="text-gray-500 font-medium">Nenhum relatório registrado</p>
+              <p className="text-xs text-gray-400 mt-1">Este aluno não possui ocorrências</p>
+            </div>
           ) : (
             <>
               {displayReports.map((report, index) => (
                 <div 
                   key={report.id} 
-                  className={`mb-4 pb-4 ${index < displayReports.length - 1 ? 'border-b border-gray-100' : ''}`}
+                  className={`mb-4 pb-4 ${index < displayReports.length - 1 ? 'border-b border-gray-100' : ''} hover:bg-gray-50 -mx-5 px-5 py-2 transition-colors`}
                 >
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <p className="text-sm text-gray-600">{formatDateTime(report.date)}</p>
-                      <p className="mt-1.5 text-gray-800">{report.content}</p>
+                  <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start">
+                    <div className="flex-1">
+                      <div className="flex items-center mb-2">
+                        <span className={`text-xs px-2 py-1 rounded-full mr-2 ${getReporterBadgeColor(report.reporterType)}`}>
+                          {report.reporterType}
+                        </span>
+                        <p className="text-xs text-gray-500">{formatDateTime(report.date || new Date())}</p>
+                      </div>
+                      <p className="mt-1 text-gray-800 text-sm leading-relaxed">{report.description || report.content}</p>
                     </div>
-                  </div>
-                  <div className="mt-2 flex items-center space-x-2">
-                    <span className={`text-xs px-2 py-1 rounded-full ${getReporterBadgeColor(report.reporterType)}`}>
-                      {report.reporterType}
-                    </span>
                   </div>
                 </div>
               ))}
               
               {hasMultipleReports && (
-                <div className="mt-2 text-center">
+                <div className="mt-4 text-center">
                   <Button 
-                    variant="link" 
+                    variant="outline" 
+                    size="sm"
                     onClick={() => setShowAllReports(!showAllReports)}
-                    className="text-primary text-sm font-medium hover:text-primary-dark"
+                    className="text-primary text-xs font-medium border-primary/30 hover:bg-primary/5"
                   >
-                    {showAllReports ? "Mostrar menos" : "Ver todos os relatórios"}
+                    {showAllReports ? "Mostrar menos" : `Ver todos os ${student.reportCount} relatórios`}
                   </Button>
                 </div>
               )}
