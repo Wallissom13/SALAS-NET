@@ -677,6 +677,111 @@ export function AdminPanel() {
         </Card>
       </div>
       
+      {/* Students List */}
+      <Card className="mb-8">
+        <CardHeader className="p-5 border-b border-gray-200 flex flex-row justify-between items-center">
+          <div>
+            <h3 className="font-medium text-gray-800">Gerenciamento de Alunos</h3>
+            <p className="text-sm text-gray-500 mt-1">Edite ou exclua alunos do sistema</p>
+          </div>
+          
+          <div className="flex items-center space-x-2">
+            <span className="text-sm text-gray-500">Total: {allStudents.length} alunos</span>
+          </div>
+        </CardHeader>
+        <CardContent className="p-0">
+          {isClassesLoading ? (
+            <div className="flex justify-center p-8">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Nome</TableHead>
+                    <TableHead>Turma</TableHead>
+                    <TableHead>Relatórios</TableHead>
+                    <TableHead className="text-right">Ações</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {allStudents.map((student) => {
+                    // Encontrar a classe do aluno
+                    const studentClass = classes?.find(c => c.id === student.classId);
+                    
+                    // Encontrar os relatórios do aluno
+                    const studentWithReports = dashboardData?.find(c => c.id === student.classId)
+                      ?.students.find(s => s.id === student.id);
+                    
+                    const reportCount = studentWithReports?.reports?.length || 0;
+                    
+                    return (
+                      <TableRow key={student.id}>
+                        <TableCell className="font-medium">{student.name}</TableCell>
+                        <TableCell>
+                          <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
+                            {classes?.find(c => c.id === student.classId)?.name || "—"}
+                          </span>
+                        </TableCell>
+                        <TableCell>
+                          <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                            reportCount >= 3 
+                              ? "bg-red-100 text-red-800" 
+                              : reportCount > 0 
+                                ? "bg-amber-100 text-amber-800" 
+                                : "bg-green-100 text-green-800"
+                          }`}>
+                            {reportCount} {reportCount === 1 ? "relatório" : "relatórios"}
+                          </span>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button 
+                                  variant="ghost" 
+                                  size="icon"
+                                  onClick={() => handleEditStudent(student)}
+                                  className="h-8 w-8 mr-1"
+                                >
+                                  <Pencil className="h-4 w-4 text-blue-600" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p>Editar aluno</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                          
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button 
+                                  variant="ghost" 
+                                  size="icon"
+                                  onClick={() => handleDeleteStudent(student)}
+                                  className="h-8 w-8"
+                                >
+                                  <Trash2 className="h-4 w-4 text-red-600" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p>Excluir aluno</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+      
       {/* User List */}
       <Card>
         <CardHeader className="p-5 border-b border-gray-200">
