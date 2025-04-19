@@ -382,7 +382,7 @@ export class MemStorage implements IStorage {
       { name: "Thales Costa Oliveira", classId: class7BId },
     ]);
     
-    // Class 8A
+    // Class 8A - Adicionando novos alunos da turma 8A
     const class8AId = (await this.getClassByName("8A"))?.id || 0;
     this.createManyStudents([
       { name: "ADRIELE DA SILVA SANTOS", classId: class8AId },
@@ -420,10 +420,10 @@ export class MemStorage implements IStorage {
       { name: "PRISCILA FIRMINO ALVES", classId: class8AId },
       { name: "STHEFANY RODRIGUES DE ANDRADE", classId: class8AId },
       { name: "LUIZ OTÁVIO QUEIROZ", classId: class8AId },
-      { name: "IARA MARIANE DA SILVA DIAS", classId: class8AId }
+      { name: "IARA MARIANE DA SILVA DIAS", classId: class8AId },
     ]);
     
-    // Class 8B
+    // Class 8B - Adicionando novos alunos da turma 8B
     const class8BId = (await this.getClassByName("8B"))?.id || 0;
     this.createManyStudents([
       { name: "ANGELICA MACIEL ZAQUEU DIAS", classId: class8BId },
@@ -436,7 +436,7 @@ export class MemStorage implements IStorage {
       { name: "GABRIELY CUNHA DA CONCEIÇÃO", classId: class8BId },
       { name: "IZABELLY KELLEN DE SOUZA SILVA", classId: class8BId },
       { name: "JONAS DOS SANTOS GOMES JUNIOR", classId: class8BId },
-      { name: "ΚΑΙΟ VITOR NOBRE DE SOUZA", classId: class8BId },
+      { name: "KAIO VITOR NOBRE DE SOUZA", classId: class8BId },
       { name: "KAUA ARAÚJO SANTOS", classId: class8BId },
       { name: "LUIZ PHELIPE SOUSA CANDIDO BATISTA", classId: class8BId },
       { name: "MANUELLY COELHO SILVA FERREIRA", classId: class8BId },
@@ -458,34 +458,10 @@ export class MemStorage implements IStorage {
       { name: "YASMIN PAULINO MENDES", classId: class8BId },
       { name: "MARIA ISABELA DA SILVA TORRES", classId: class8BId },
       { name: "MARCOS ANDRÉ BATISTA DOS REIS", classId: class8BId },
-      { name: "EMILY CRISTINA FRANÇA DA SILVA", classId: class8BId }
+      { name: "EMILY CRISTINA FRANÇA DA SILVA", classId: class8BId },
     ]);
     
-    // Class 9A
-    const class9AId = (await this.getClassByName("9A"))?.id || 0;
-    this.createManyStudents([
-      { name: "Alex Santos Lima", classId: class9AId },
-      { name: "Bruna Costa Silva", classId: class9AId },
-      { name: "Carlos Eduardo Ferreira", classId: class9AId },
-      { name: "Danielle Oliveira Santos", classId: class9AId },
-      { name: "Enzo Gabriel Lima", classId: class9AId },
-      { name: "Flávia Costa Gomes", classId: class9AId },
-      { name: "Guilherme Santos Silva", classId: class9AId },
-      { name: "Heloísa Lima Oliveira", classId: class9AId },
-      { name: "Igor Ferreira Costa", classId: class9AId },
-      { name: "Júlia Santos Gomes", classId: class9AId },
-      { name: "Kevin Lima Silva", classId: class9AId },
-      { name: "Larissa Oliveira Santos", classId: class9AId },
-      { name: "Mateus Costa Lima", classId: class9AId },
-      { name: "Nathália Ferreira Silva", classId: class9AId },
-      { name: "Otávio Santos Costa", classId: class9AId },
-      { name: "Priscila Lima Oliveira", classId: class9AId },
-      { name: "Renan Ferreira Gomes", classId: class9AId },
-      { name: "Sabrina Santos Silva", classId: class9AId },
-      { name: "Thiago Lima Costa", classId: class9AId },
-    ]);
-    
-    // Class 9B
+    // Class 9B - Adicionando novos alunos da turma 9B
     const class9BId = (await this.getClassByName("9B"))?.id || 0;
     this.createManyStudents([
       { name: "ANA KARLA AVELINA DOS ANJOS", classId: class9BId },
@@ -528,7 +504,31 @@ export class MemStorage implements IStorage {
       { name: "WALLISSON SANTOS DA SILVA", classId: class9BId },
       { name: "KAWAN MARÇAL CARVALHO", classId: class9BId },
       { name: "JOÃO GABRIEL GOMES ROMANO", classId: class9BId },
-      { name: "MARIA CLARA OLIVIERA SANTOS", classId: class9BId }
+      { name: "MARIA CLARA OLIVIERA SANTOS", classId: class9BId },
+    ]);
+    
+    // Class 9A
+    const class9AId = (await this.getClassByName("9A"))?.id || 0;
+    this.createManyStudents([
+      { name: "Alex Santos Lima", classId: class9AId },
+      { name: "Bruna Costa Silva", classId: class9AId },
+      { name: "Carlos Eduardo Ferreira", classId: class9AId },
+      { name: "Danielle Oliveira Santos", classId: class9AId },
+      { name: "Enzo Gabriel Lima", classId: class9AId },
+      { name: "Flávia Costa Gomes", classId: class9AId },
+      { name: "Guilherme Santos Silva", classId: class9AId },
+      { name: "Heloísa Lima Oliveira", classId: class9AId },
+      { name: "Igor Ferreira Costa", classId: class9AId },
+      { name: "Júlia Santos Gomes", classId: class9AId },
+      { name: "Kevin Lima Silva", classId: class9AId },
+      { name: "Larissa Oliveira Santos", classId: class9AId },
+      { name: "Mateus Costa Lima", classId: class9AId },
+      { name: "Nathália Ferreira Silva", classId: class9AId },
+      { name: "Otávio Santos Costa", classId: class9AId },
+      { name: "Priscila Lima Oliveira", classId: class9AId },
+      { name: "Renan Ferreira Gomes", classId: class9AId },
+      { name: "Sabrina Santos Silva", classId: class9AId },
+      { name: "Thiago Lima Costa", classId: class9AId },
     ]);
     
     // Class 9C
