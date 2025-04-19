@@ -1,14 +1,20 @@
-// Arquivo de inicialização para o Render
+// Script de inicialização para o Render
+const path = require('path');
 const { spawn } = require('child_process');
 
-// Função para executar um script
-function runScript(script) {
+// Função para executar um comando npm
+function runNpmCommand(command) {
   return new Promise((resolve, reject) => {
-    const child = spawn('node', [script], { stdio: 'inherit' });
+    console.log(`Executando: npm ${command}`);
+    
+    const child = spawn('npm', [command], { 
+      stdio: 'inherit',
+      shell: true 
+    });
     
     child.on('close', (code) => {
       if (code !== 0) {
-        reject(new Error(`Script ${script} exited with code ${code}`));
+        reject(new Error(`Comando 'npm ${command}' falhou com código ${code}`));
         return;
       }
       resolve();
@@ -16,15 +22,24 @@ function runScript(script) {
   });
 }
 
-// Iniciar o servidor
-async function startServer() {
+// Função para executar o servidor compilado
+function runServer() {
+  console.log('Iniciando o servidor...');
+  
+  // Se estamos no ambiente do Render, vamos usar o node para executar o arquivo compilado
   try {
-    await runScript('./dist/index.js');
+    if (process.env.NODE_ENV === 'production') {
+      // Execução direta com o Node
+      require('./dist/index.js');
+    } else {
+      // Durante desenvolvimento, usar tsx para execução
+      require('tsx')('server/index.ts');
+    }
   } catch (error) {
-    console.error('Error starting server:', error);
+    console.error('Erro ao iniciar o servidor:', error);
     process.exit(1);
   }
 }
 
-// Executar o servidor
-startServer();
+// Iniciar o servidor
+runServer();

@@ -1,0 +1,68 @@
+==> Parece que não temos acesso ao seu repositório, mas tentaremos cloná-lo de qualquer maneira.
+==> Clonagem de https://github.com/Wallissom13/salasconct
+==> Fazendo check-out do commit d05217d60bde6282b313b1ac4588fd7f52bdbaac no branch main
+==> Usando Node.js versão 22.14.0 (padrão)
+==> Documentos sobre como especificar uma versão Node.js: https://render.com/docs/node-version
+==> Usando o Bun versão 1.1.0 (padrão)
+==> Documentos sobre como especificar uma versão do coque: https://render.com/docs/bun-version
+==> Executando o comando de compilação 'npm install;  npm run build'...
+adicionou 485 pacotes e auditou 486 pacotes em 7s
+64 pacotes estão à procura de financiamento
+    Execute 'Fundo NPM' para obter detalhes
+7 vulnerabilidades de gravidade moderada
+Para resolver problemas que não exigem atenção, execute:
+    correção de auditoria npm
+Para resolver todos os problemas (incluindo alterações significativas), execute:
+    npm audit fix --force
+Execute 'npm audit' para obter detalhes.
+> compilação rest-express@1.0.0
+> vite build && esbuild server/index.ts --platform=node --packages=external --bundle --format=esm --outdir=dist
+Vite v5.4.14 Edifício para produção...
+Transformar...
+Lista de navegadores: os dados dos navegadores (caniuse-lite) têm 6 meses.  Por favor, execute:
+    npx atualizar navegadoreslista-db@latest
+  Por que você deve fazer isso regularmente: https://github.com/browserslist/update-db#readme
+✓ 2538 módulos transformados.
+renderizando pedaços ...
+computando o tamanho do gzip...
+.. /dist/public/index.html 1.85 kB │ gzip: 0.75 kB
+.. /dist/public/assets/logo-DxqeZe97.png 151.66 kB
+.. /dist/public/assets/index-C4vCaceS.css 66.74 kB │ gzip: 11.65 kB
+.. /dist/public/assets/index-kLRq3eCE.js 894.30 kB │ gzip: 258.69 kB
+(!)  Alguns blocos são maiores que 500 kB após a minificação.  Considerar:
+- Usando import() dinâmico para dividir o código do aplicativo
+- Use build.rollupOptions.output.manualChunks para melhorar o agrupamento: https://rollupjs.org/configuration-options/#output-manualchunks
+- Ajuste o limite de tamanho do bloco para este aviso por meio de build.chunkSizeWarningLimit.
+✓ construído em 5,75s
+    dist/index.js 23,7 KB
+⚡ Feito em 5ms
+==> Carregando build...
+==> Carregado em 5.3s.  A compressão levou 2,8s
+==> Construir com sucesso 🎉
+==> Implantando...
+==> Executando 'npm run start'
+> início do rest-express@1.0.0
+> NODE_ENV=nó de produção dist/index.js
+== > Saiu com status 1
+==> Maneiras comuns de solucionar problemas de implantação: https://render.com/docs/troubleshooting-deploys
+file:///opt/render/project/src/dist/index.js:77
+    lançar novo Erro(
+        ^
+Erro: DATABASE_URL deve ser definido.  Você esqueceu de provisionar um banco de dados?
+    em file:///opt/render/project/src/dist/index.js:77:9
+        em ModuleJob.run (nó: interno / módulos / esm / module_job: 271: 25)
+        em onImport.tracePromise.__proto__ assíncrono (node:internal/modules/esm/loader:578:26)
+        em async asyncRunEntryPointWithESMLoader (nó: interno / módulos / run_main: 116: 5)
+Node.js v22.14.0
+==> Executando 'npm run start'
+> início do rest-express@1.0.0
+> NODE_ENV=nó de produção dist/index.js
+file:///opt/render/project/src/dist/index.js:77
+    lançar novo Erro(
+        ^
+Erro: DATABASE_URL deve ser definido.  Você esqueceu de provisionar um banco de dados?
+    em file:///opt/render/project/src/dist/index.js:77:9
+        em ModuleJob.run (nó: interno / módulos / esm / module_job: 271: 25)
+        em onImport.tracePromise.__proto__ assíncrono (node:internal/modules/esm/loader:578:26)
+        em async asyncRunEntryPointWithESMLoader (nó: interno / módulos / run_main: 116: 5)
+Node.js v22.14.0
