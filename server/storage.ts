@@ -4,6 +4,9 @@ import { User, Class, Student, Report, ClassWithStudents, StudentWithReports,
   InsertUser, InsertClass, InsertStudent, InsertReport } from "@shared/schema";
 import pg from "pg";
 import connectPg from "connect-pg-simple";
+import { eq, and, or } from "drizzle-orm";
+import { db } from "./db";
+import { users, classes, students, reports } from "@shared/schema";
 
 const MemoryStore = memorystore(session);
 
@@ -43,27 +46,10 @@ export interface IStorage {
   sessionStore: any;
 }
 
-export class MemStorage implements IStorage {
-  private usersMap: Map<number, User>;
-  private classesMap: Map<number, Class>;
-  private studentsMap: Map<number, Student>;
-  private reportsMap: Map<number, Report>;
+export class DatabaseStorage implements IStorage {
   public sessionStore: any;
-  private userIdCounter: number;
-  private classIdCounter: number;
-  private studentIdCounter: number;
-  private reportIdCounter: number;
 
   constructor() {
-    this.usersMap = new Map();
-    this.classesMap = new Map();
-    this.studentsMap = new Map();
-    this.reportsMap = new Map();
-    this.userIdCounter = 0;
-    this.classIdCounter = 0;
-    this.studentIdCounter = 0;
-    this.reportIdCounter = 0;
-    
     // Usar banco de dados PostgreSQL se disponível, caso contrário usar MemoryStore
     if (process.env.DATABASE_URL) {
       const pool = new pg.Pool({
@@ -81,160 +67,200 @@ export class MemStorage implements IStorage {
       });
     }
     
-    // Create admin user
-    this.createUser({
-      username: "Wallisson10",
-      password: "CEPI10",
-      isAdmin: true
+    // Verificar se já existe um usuário admin, se não, criar um
+    this.getUserByUsername("Wallisson10").then(user => {
+      if (!user) {
+        this.createUser({
+          username: "Wallisson10",
+          password: "CEPI10",
+          isAdmin: true
+        });
+      }
     });
     
-    // Create test classes
-    Promise.all([
-      this.createClass({ name: "6A" }),
-      this.createClass({ name: "6B" }),
-      this.createClass({ name: "7A" }),
-      this.createClass({ name: "7B" }),
-      this.createClass({ name: "8A" }),
-      this.createClass({ name: "8B" }),
-      this.createClass({ name: "9A" }),
-      this.createClass({ name: "9B" }),
-      this.createClass({ name: "9C" }),
-    ]).then(() => {
-      // Initialize students with mock data
-      this.initializeStudents();
+    // Verificar se já existem turmas, se não, criar as turmas necessárias
+    this.getClasses().then(async classes => {
+      // Remover turmas 9A e 9C se existirem
+      const class9A = classes.find(c => c.name === "9A");
+      const class9C = classes.find(c => c.name === "9C");
+      
+      if (class9A) {
+        try {
+          const students = await this.getStudentsByClass(class9A.id);
+          for (const student of students) {
+            await this.deleteStudent(student.id);
+          }
+          await db.delete(classes).where(eq(classes.id, class9A.id));
+        } catch (e) {
+          console.error("Erro ao remover turma 9A:", e);
+        }
+      }
+      
+      if (class9C) {
+        try {
+          const students = await this.getStudentsByClass(class9C.id);
+          for (const student of students) {
+            await this.deleteStudent(student.id);
+          }
+          await db.delete(classes).where(eq(classes.id, class9C.id));
+        } catch (e) {
+          console.error("Erro ao remover turma 9C:", e);
+        }
+      }
+      
+      // Criar turmas se não existirem
+      if (classes.length === 0) {
+        Promise.all([
+          this.createClass({ name: "6A" }),
+          this.createClass({ name: "6B" }),
+          this.createClass({ name: "6C" }),
+          this.createClass({ name: "7A" }),
+          this.createClass({ name: "7B" }),
+          this.createClass({ name: "7C" }),
+          this.createClass({ name: "8A" }),
+          this.createClass({ name: "8B" }),
+          this.createClass({ name: "9B" })
+        ]);
+      } else {
+        // Verificar turmas específicas e criar se não existirem
+        const requiredClasses = ["6A", "6B", "6C", "7A", "7B", "7C", "8A", "8B", "9B"];
+        for (const className of requiredClasses) {
+          if (!classes.some(c => c.name === className)) {
+            await this.createClass({ name: className });
+          }
+        }
+      }
     });
   }
 
   async getUser(id: number): Promise<User | undefined> {
-    return this.usersMap.get(id);
+    const result = await db.select().from(users).where(eq(users.id, id));
+    return result[0];
   }
 
   async getUserByUsername(username: string): Promise<User | undefined> {
-    return Array.from(this.usersMap.values()).find(
-      (user) => user.username === username
-    );
+    const result = await db.select().from(users).where(eq(users.username, username));
+    return result[0];
   }
 
   async createUser(insertUser: InsertUser): Promise<User> {
-    const id = ++this.userIdCounter;
     // Garante que isAdmin seja booleano
-    const user: User = { 
+    const userToInsert = { 
       ...insertUser, 
-      id,
       isAdmin: insertUser.isAdmin === true 
     };
-    this.usersMap.set(id, user);
-    return user;
+    
+    const result = await db.insert(users).values(userToInsert).returning();
+    return result[0];
   }
 
   async getClasses(): Promise<Class[]> {
-    return Array.from(this.classesMap.values()).sort((a, b) => a.name.localeCompare(b.name));
+    const result = await db.select().from(classes);
+    return result.sort((a, b) => a.name.localeCompare(b.name));
   }
 
   async getClass(id: number): Promise<Class | undefined> {
-    return this.classesMap.get(id);
+    const result = await db.select().from(classes).where(eq(classes.id, id));
+    return result[0];
   }
 
   async getClassByName(name: string): Promise<Class | undefined> {
-    return Array.from(this.classesMap.values()).find(
-      (classItem) => classItem.name === name
-    );
+    const result = await db.select().from(classes).where(eq(classes.name, name));
+    return result[0];
   }
 
   async createClass(classData: InsertClass): Promise<Class> {
-    const id = ++this.classIdCounter;
-    const newClass: Class = { ...classData, id };
-    this.classesMap.set(id, newClass);
-    return newClass;
+    const result = await db.insert(classes).values(classData).returning();
+    return result[0];
   }
 
   async getStudents(): Promise<Student[]> {
-    return Array.from(this.studentsMap.values());
+    return await db.select().from(students);
   }
 
   async getStudentsByClass(classId: number): Promise<Student[]> {
-    return Array.from(this.studentsMap.values()).filter(
-      (student) => student.classId === classId
-    );
+    return await db.select().from(students).where(eq(students.classId, classId));
   }
 
   async getStudent(id: number): Promise<Student | undefined> {
-    return this.studentsMap.get(id);
+    const result = await db.select().from(students).where(eq(students.id, id));
+    return result[0];
   }
 
   async createStudent(student: InsertStudent): Promise<Student> {
-    const id = ++this.studentIdCounter;
-    const newStudent: Student = { ...student, id };
-    this.studentsMap.set(id, newStudent);
-    return newStudent;
+    const result = await db.insert(students).values(student).returning();
+    return result[0];
   }
 
   async createManyStudents(studentsData: InsertStudent[]): Promise<Student[]> {
-    const newStudents: Student[] = [];
-    
-    for (const studentData of studentsData) {
-      const id = ++this.studentIdCounter;
-      const newStudent: Student = { ...studentData, id };
-      this.studentsMap.set(id, newStudent);
-      newStudents.push(newStudent);
+    if (studentsData.length === 0) {
+      return [];
     }
     
-    return newStudents;
+    const result = await db.insert(students).values(studentsData).returning();
+    return result;
   }
 
   async updateStudent(id: number, studentData: InsertStudent): Promise<Student> {
-    const existingStudent = this.studentsMap.get(id);
-    if (!existingStudent) {
+    const result = await db
+      .update(students)
+      .set(studentData)
+      .where(eq(students.id, id))
+      .returning();
+    
+    if (result.length === 0) {
       throw new Error("Aluno não encontrado");
     }
     
-    const updatedStudent: Student = { ...studentData, id };
-    this.studentsMap.set(id, updatedStudent);
-    return updatedStudent;
+    return result[0];
   }
 
   async deleteStudent(id: number): Promise<void> {
-    if (!this.studentsMap.has(id)) {
+    // Delete all reports for this student first
+    await db.delete(reports).where(eq(reports.studentId, id));
+    
+    // Then delete the student
+    const result = await db.delete(students).where(eq(students.id, id)).returning();
+    
+    if (result.length === 0) {
       throw new Error("Aluno não encontrado");
     }
-    
-    // Delete all reports for this student
-    const reportsToDelete = Array.from(this.reportsMap.values())
-      .filter(report => report.studentId === id)
-      .map(report => report.id);
-    
-    for (const reportId of reportsToDelete) {
-      this.reportsMap.delete(reportId);
-    }
-    
-    // Delete the student
-    this.studentsMap.delete(id);
   }
 
   async getReports(): Promise<Report[]> {
-    return Array.from(this.reportsMap.values());
+    return await db.select().from(reports);
   }
 
   async getReportsByStudent(studentId: number): Promise<Report[]> {
-    return Array.from(this.reportsMap.values()).filter(
-      (report) => report.studentId === studentId
-    );
+    return await db.select().from(reports).where(eq(reports.studentId, studentId));
   }
 
   async getReportsByClass(classId: number): Promise<Report[]> {
     const classStudents = await this.getStudentsByClass(classId);
+    if (classStudents.length === 0) {
+      return [];
+    }
+    
     const studentIds = classStudents.map(student => student.id);
     
-    return Array.from(this.reportsMap.values()).filter(
-      (report) => studentIds.includes(report.studentId)
-    );
+    if (studentIds.length === 0) {
+      return [];
+    }
+    
+    // Se houver vários estudantes, temos que verificar um por um
+    let allReports: Report[] = [];
+    
+    for (const studentId of studentIds) {
+      const studentReports = await db.select().from(reports).where(eq(reports.studentId, studentId));
+      allReports = [...allReports, ...studentReports];
+    }
+    
+    return allReports;
   }
 
   async createReport(report: InsertReport): Promise<Report> {
-    const id = ++this.reportIdCounter;
-    const newReport: Report = { ...report, id };
-    this.reportsMap.set(id, newReport);
-    return newReport;
+    const result = await db.insert(reports).values(report).returning();
+    return result[0];
   }
 
   async getClassesWithStudents(): Promise<ClassWithStudents[]> {
@@ -598,4 +624,4 @@ export class MemStorage implements IStorage {
 }
 
 // Exportar uma única instância que será compartilhada em todo o aplicativo
-export const storage = new MemStorage();
+export const storage = new DatabaseStorage();
