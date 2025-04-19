@@ -1,0 +1,34 @@
+1. **Página Inicial:**
+   - Exibição do logotipo.
+   - Tela de login com campos para usuário e senha. Apenas os logins listados poderão acessar, usando a senha fixa "CEPI10".
+
+2. **Menu Principal Após Login:**
+   - Abas para cada turma (6A, 6B, 6C, 7A, 7B, 7C, 8A, 8B, 9B).
+   - Aba "Enviar Relatórios" com os seguintes campos:
+     - **Turma:** Seleção de uma turma fixa.
+     - **Aluno:** Seleção de alunos que você enviará posteriormente.
+     - **Ocorrido:** Campo de texto para descrever o que aconteceu.
+     - **Data e Hora:** Campos para selecionar ou digitar a data e hora do ocorrido.
+     - **Eu Sou:** Opções para escolher entre "Líder", "Vice" ou "Professor".
+
+3. **Atualização Automática:**
+   - Quando um relatório é enviado, ele deve ser automaticamente exibido na aba da turma correspondente.
+
+4. **Agrupamento de Relatórios:**
+   - Relatórios devem ser agrupados por aluno. Se um aluno tiver mais de três relatórios, o nome dele deve aparecer em vermelho.
+
+5. **Aba de Administração:**
+   - Acesso exclusivo para o administrador (Wallisson10).
+   - Funcionalidades para importar alunos em massa e criar novos logins/senhas.
+   - Permissão para conceder acesso administrativo a novos usuários.
+
+### Considerações Técnicas
+
+- **Armazenamento de Dados:** É importante que as informações sejam salvas de forma persistente, mesmo após reinicializações do sistema. Você pode considerar usar um banco de dados que armazene essas informações de forma segura.
+- **Design Atraente:** O design deve ser educativo e visualmente agradável. Você pode optar por cores suaves e fontes que sejam legíveis e amigáveis.
+- **Gráficos na Página Inicial:** Incluir gráficos pode ajudar a visualizar dados importantes, como a frequência dos alunos ou o número de relatórios enviados.
+
+### Problemas Potenciais
+
+- **Salvamento das Informações:** A persistência dos dados é crucial. Certifique-se de escolher uma solução que salve automaticamente os dados sem perder informações durante reinicializações.
+- **Carga do Site:** Otimize o site para garantir que não fique pesado e que não apareçam erros no Chrome ou em outros navegadores.
