@@ -75,21 +75,21 @@ export default function Dashboard({ classId }: DashboardProps = {}) {
       {/* Header */}
       <header className="bg-gradient-to-r from-blue-900 to-indigo-800 shadow-md">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
-          <div className="flex items-center space-x-4">
-            <Logo size="medium" showAnimation={true} />
+          <div className="flex items-center space-x-2 sm:space-x-4">
+            <Logo size="small" showAnimation={true} className="hidden xs:block" />
             <div>
-              <h1 className="text-xl md:text-2xl font-bold text-white">
+              <h1 className="text-lg sm:text-xl md:text-2xl font-bold text-white">
                 <span className="bg-clip-text text-transparent bg-gradient-to-r from-amber-400 to-amber-200 animate-pulse">
                   SALAS CONECTADAS
                 </span>
               </h1>
-              <p className="text-sm text-blue-100">Centro de Ensino em Período Integral</p>
+              <p className="text-xs sm:text-sm text-blue-100 hidden sm:block">Centro de Ensino em Período Integral</p>
             </div>
           </div>
           
-          <div className="flex items-center space-x-6">
-            <div className="text-sm text-white flex items-center">
-              <span className="mr-2">Olá, </span>
+          <div className="flex items-center space-x-2 sm:space-x-6">
+            <div className="text-xs sm:text-sm text-white flex items-center">
+              <span className="hidden xs:inline mr-2">Olá, </span>
               <span className="font-medium">{user?.username}</span>
             </div>
             
@@ -98,18 +98,76 @@ export default function Dashboard({ classId }: DashboardProps = {}) {
               size="sm" 
               onClick={handleLogout}
               disabled={logoutMutation.isPending}
-              className="text-white hover:text-white hover:bg-blue-800"
+              className="text-white hover:text-white hover:bg-blue-800 px-1.5 sm:px-3"
             >
               {logoutMutation.isPending ? (
-                <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                <Loader2 className="h-4 w-4 sm:mr-1 animate-spin" />
               ) : (
-                <LogOut className="h-4 w-4 mr-1" />
+                <LogOut className="h-4 w-4 sm:mr-1" />
               )}
-              Sair
+              <span className="hidden sm:inline">Sair</span>
             </Button>
           </div>
         </div>
       </header>
+
+      {/* Mobile Menu Button - Visível apenas em dispositivos móveis */}
+      <div className="md:hidden fixed bottom-4 right-4 z-50">
+        <Sheet>
+          <SheetTrigger asChild>
+            <Button size="icon" className="bg-blue-800 hover:bg-blue-700 text-white rounded-full shadow-lg h-14 w-14">
+              <Menu className="h-6 w-6" />
+            </Button>
+          </SheetTrigger>
+          <SheetContent className="w-[85%] sm:w-[350px]">
+            <div className="py-4">
+              <h2 className="text-lg font-semibold text-center mb-4">Menu</h2>
+              <div className="flex flex-col space-y-2">
+                <Button 
+                  variant={activeTab === "dashboard" ? "default" : "ghost"}
+                  className="justify-start"
+                  onClick={() => setActiveTab("dashboard")}
+                >
+                  <PieChart className="h-4 w-4 mr-2" />
+                  Dashboard
+                </Button>
+                
+                {classesData?.map((classItem) => (
+                  <Button 
+                    key={classItem.id}
+                    variant={activeTab === classItem.name ? "default" : "ghost"}
+                    className="justify-start"
+                    onClick={() => setActiveTab(classItem.name)}
+                  >
+                    <Users className="h-4 w-4 mr-2" />
+                    Turma {classItem.name}
+                  </Button>
+                ))}
+                
+                <Button 
+                  variant={activeTab === "enviar-relatorio" ? "default" : "ghost"}
+                  className="justify-start"
+                  onClick={() => setActiveTab("enviar-relatorio")}
+                >
+                  <FileText className="h-4 w-4 mr-2" />
+                  Enviar Relatório
+                </Button>
+                
+                {user?.isAdmin && (
+                  <Button 
+                    variant={activeTab === "admin" ? "default" : "ghost"}
+                    className="justify-start"
+                    onClick={() => setActiveTab("admin")}
+                  >
+                    <Grid className="h-4 w-4 mr-2" />
+                    Administração
+                  </Button>
+                )}
+              </div>
+            </div>
+          </SheetContent>
+        </Sheet>
+      </div>
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-grow">
@@ -123,7 +181,7 @@ export default function Dashboard({ classId }: DashboardProps = {}) {
             onValueChange={setActiveTab} 
             className="w-full"
           >
-            <TabsList className="flex space-x-1 overflow-x-auto hide-scrollbar h-auto border-b border-gray-200 bg-transparent p-0 mb-8">
+            <TabsList className="hidden md:flex space-x-1 overflow-x-auto h-auto border-b border-gray-200 bg-transparent p-0 mb-8">
               <TabsTrigger 
                 value="dashboard"
                 className="px-5 py-2.5 text-sm font-medium data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none"
@@ -154,6 +212,16 @@ export default function Dashboard({ classId }: DashboardProps = {}) {
                 </TabsTrigger>
               )}
             </TabsList>
+            
+            {/* Título da página atual - visível apenas em mobile */}
+            <div className="md:hidden mb-6">
+              <h2 className="text-xl font-bold text-blue-900">
+                {activeTab === "dashboard" && "Dashboard"}
+                {activeTab === "enviar-relatorio" && "Enviar Relatório"}
+                {activeTab === "admin" && "Administração"}
+                {classesData?.find(c => c.name === activeTab) && `Turma ${activeTab}`}
+              </h2>
+            </div>
             
             {/* Dashboard Tab */}
             <TabsContent value="dashboard">
