@@ -1,9 +1,10 @@
 import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
+import { Link, useLocation } from "wouter";
 import { ClassWithStudents } from "@shared/schema";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { LogOut, Loader2, PieChart, BarChart, Users, FileText } from "lucide-react";
+import { LogOut, Loader2, PieChart, BarChart, Users, FileText, Grid, Menu } from "lucide-react";
 import { Logo } from "@/components/logo";
 import { Button } from "@/components/ui/button";
 import { ClassTab } from "@/components/class-tab";
@@ -11,14 +12,30 @@ import { ReportForm } from "@/components/report-form";
 import { AdminPanel } from "@/components/admin-panel";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { PieChart as RechartsBarChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend, BarChart as RechartsBarChart2, Bar, XAxis, YAxis } from "recharts";
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 
-export default function Dashboard() {
+interface DashboardProps {
+  classId?: number;
+}
+
+export default function Dashboard({ classId }: DashboardProps = {}) {
   const { user, logoutMutation } = useAuth();
   const [activeTab, setActiveTab] = useState<string>("dashboard");
+  const [location, setLocation] = useLocation();
   
   const { data: classesData, isLoading } = useQuery<ClassWithStudents[]>({
     queryKey: ["/api/dashboard"],
   });
+  
+  // Se receber um classId, seleciona a tab correspondente
+  useEffect(() => {
+    if (classId && classesData) {
+      const classItem = classesData.find(cls => cls.id === classId);
+      if (classItem) {
+        setActiveTab(classItem.name);
+      }
+    }
+  }, [classId, classesData]);
 
   const handleLogout = () => {
     logoutMutation.mutate();

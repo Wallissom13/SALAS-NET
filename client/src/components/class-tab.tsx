@@ -298,21 +298,32 @@ function StudentCard({ student, getReporterBadgeColor, formatDateTime }: Student
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
-                  <DropdownMenuItem onClick={() => {
-                    setEditName(student.name);
-                    setIsEditDialogOpen(true);
-                  }}>
-                    <Pencil className="mr-2 h-4 w-4" />
-                    Editar
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem
-                    className="text-red-600"
-                    onClick={() => setIsDeleteDialogOpen(true)}
-                  >
-                    <Trash2 className="mr-2 h-4 w-4" />
-                    Excluir
-                  </DropdownMenuItem>
+                  {/* Opções de admin apenas para usuários administradores */}
+                  {window.userIsAdmin === true && (
+                    <>
+                      <DropdownMenuItem onClick={() => {
+                        setEditName(student.name);
+                        setIsEditDialogOpen(true);
+                      }}>
+                        <Pencil className="mr-2 h-4 w-4" />
+                        Editar
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem
+                        className="text-red-600"
+                        onClick={() => setIsDeleteDialogOpen(true)}
+                      >
+                        <Trash2 className="mr-2 h-4 w-4" />
+                        Excluir
+                      </DropdownMenuItem>
+                    </>
+                  )}
+                  {/* Para usuários não-admin, exibir apenas visualização de relatórios */}
+                  {window.userIsAdmin !== true && (
+                    <DropdownMenuItem onClick={() => setShowAllReports(!showAllReports)}>
+                      {showAllReports ? "Ocultar relatórios" : "Ver todos relatórios"}
+                    </DropdownMenuItem>
+                  )}
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>

@@ -1,8 +1,13 @@
-import { users, type User, type InsertUser, classes, type Class, type InsertClass, students, type Student, type InsertStudent, reports, type Report, type InsertReport, type StudentWithReports, type ClassWithStudents } from "@shared/schema";
 import session from "express-session";
-import createMemoryStore from "memorystore";
+import memorystore from "memorystore";
+import { User, Class, Student, Report, ClassWithStudents, StudentWithReports, 
+  InsertUser, InsertClass, InsertStudent, InsertReport } from "@shared/schema";
+import pg from "pg";
+import connectPg from "connect-pg-simple";
 
-const MemoryStore = createMemoryStore(session);
+const MemoryStore = memorystore(session);
+
+const PostgresSessionStore = connectPg(session);
 
 export interface IStorage {
   // User operations
@@ -43,7 +48,7 @@ export class MemStorage implements IStorage {
   private classesMap: Map<number, Class>;
   private studentsMap: Map<number, Student>;
   private reportsMap: Map<number, Report>;
-  public sessionStore: session.SessionStore;
+  public sessionStore: any;
   private userIdCounter: number;
   private classIdCounter: number;
   private studentIdCounter: number;
@@ -54,79 +59,102 @@ export class MemStorage implements IStorage {
     this.classesMap = new Map();
     this.studentsMap = new Map();
     this.reportsMap = new Map();
-    this.userIdCounter = 1;
-    this.classIdCounter = 1;
-    this.studentIdCounter = 1;
-    this.reportIdCounter = 1;
-    this.sessionStore = new MemoryStore({
-      checkPeriod: 86400000, // 24 hours
-    });
+    this.userIdCounter = 0;
+    this.classIdCounter = 0;
+    this.studentIdCounter = 0;
+    this.reportIdCounter = 0;
     
-    // Initialize with admin user
+    // Usar banco de dados PostgreSQL se disponível, caso contrário usar MemoryStore
+    if (process.env.DATABASE_URL) {
+      const pool = new pg.Pool({
+        connectionString: process.env.DATABASE_URL,
+        ssl: { rejectUnauthorized: false }
+      });
+      
+      this.sessionStore = new PostgresSessionStore({
+        pool,
+        createTableIfMissing: true
+      });
+    } else {
+      this.sessionStore = new MemoryStore({
+        checkPeriod: 86400000,
+      });
+    }
+    
+    // Create admin user
     this.createUser({
       username: "Wallisson10",
       password: "CEPI10",
       isAdmin: true
     });
     
-    // Initialize with classes
-    const classes = ["6A", "6B", "6C", "7A", "7B", "7C", "8A", "8B", "9B"];
-    classes.forEach(className => {
-      this.createClass({ name: className });
+    // Create test classes
+    Promise.all([
+      this.createClass({ name: "6A" }),
+      this.createClass({ name: "6B" }),
+      this.createClass({ name: "7A" }),
+      this.createClass({ name: "7B" }),
+      this.createClass({ name: "8A" }),
+      this.createClass({ name: "8B" }),
+      this.createClass({ name: "9A" }),
+      this.createClass({ name: "9B" }),
+      this.createClass({ name: "9C" }),
+    ]).then(() => {
+      // Initialize students with mock data
+      this.initializeStudents();
     });
-    
-    // Initialize with students for each class
-    this.initializeStudents();
   }
 
-  // User operations
   async getUser(id: number): Promise<User | undefined> {
     return this.usersMap.get(id);
   }
 
   async getUserByUsername(username: string): Promise<User | undefined> {
     return Array.from(this.usersMap.values()).find(
-      (user) => user.username === username,
+      (user) => user.username === username
     );
   }
 
   async createUser(insertUser: InsertUser): Promise<User> {
-    const id = this.userIdCounter++;
-    const user: User = { ...insertUser, id };
+    const id = ++this.userIdCounter;
+    // Garante que isAdmin seja booleano
+    const user: User = { 
+      ...insertUser, 
+      id,
+      isAdmin: insertUser.isAdmin === true 
+    };
     this.usersMap.set(id, user);
     return user;
   }
 
-  // Class operations
   async getClasses(): Promise<Class[]> {
-    return Array.from(this.classesMap.values());
+    return Array.from(this.classesMap.values()).sort((a, b) => a.name.localeCompare(b.name));
   }
 
   async getClass(id: number): Promise<Class | undefined> {
     return this.classesMap.get(id);
   }
-  
+
   async getClassByName(name: string): Promise<Class | undefined> {
     return Array.from(this.classesMap.values()).find(
-      (cls) => cls.name === name,
+      (classItem) => classItem.name === name
     );
   }
 
   async createClass(classData: InsertClass): Promise<Class> {
-    const id = this.classIdCounter++;
+    const id = ++this.classIdCounter;
     const newClass: Class = { ...classData, id };
     this.classesMap.set(id, newClass);
     return newClass;
   }
 
-  // Student operations
   async getStudents(): Promise<Student[]> {
     return Array.from(this.studentsMap.values());
   }
 
   async getStudentsByClass(classId: number): Promise<Student[]> {
     return Array.from(this.studentsMap.values()).filter(
-      (student) => student.classId === classId,
+      (student) => student.classId === classId
     );
   }
 
@@ -135,25 +163,27 @@ export class MemStorage implements IStorage {
   }
 
   async createStudent(student: InsertStudent): Promise<Student> {
-    const id = this.studentIdCounter++;
+    const id = ++this.studentIdCounter;
     const newStudent: Student = { ...student, id };
     this.studentsMap.set(id, newStudent);
     return newStudent;
   }
-  
+
   async createManyStudents(studentsData: InsertStudent[]): Promise<Student[]> {
-    const createdStudents: Student[] = [];
+    const newStudents: Student[] = [];
     
     for (const studentData of studentsData) {
-      const newStudent = await this.createStudent(studentData);
-      createdStudents.push(newStudent);
+      const id = ++this.studentIdCounter;
+      const newStudent: Student = { ...studentData, id };
+      this.studentsMap.set(id, newStudent);
+      newStudents.push(newStudent);
     }
     
-    return createdStudents;
+    return newStudents;
   }
-  
+
   async updateStudent(id: number, studentData: InsertStudent): Promise<Student> {
-    const existingStudent = await this.getStudent(id);
+    const existingStudent = this.studentsMap.get(id);
     if (!existingStudent) {
       throw new Error("Aluno não encontrado");
     }
@@ -162,54 +192,72 @@ export class MemStorage implements IStorage {
     this.studentsMap.set(id, updatedStudent);
     return updatedStudent;
   }
-  
+
   async deleteStudent(id: number): Promise<void> {
-    // Delete related reports first
-    const reports = await this.getReportsByStudent(id);
-    for (const report of reports) {
-      this.reportsMap.delete(report.id);
+    if (!this.studentsMap.has(id)) {
+      throw new Error("Aluno não encontrado");
     }
     
+    // Delete all reports for this student
+    const reportsToDelete = Array.from(this.reportsMap.values())
+      .filter(report => report.studentId === id)
+      .map(report => report.id);
+    
+    for (const reportId of reportsToDelete) {
+      this.reportsMap.delete(reportId);
+    }
+    
+    // Delete the student
     this.studentsMap.delete(id);
   }
 
-  // Report operations
   async getReports(): Promise<Report[]> {
     return Array.from(this.reportsMap.values());
   }
 
   async getReportsByStudent(studentId: number): Promise<Report[]> {
     return Array.from(this.reportsMap.values()).filter(
-      (report) => report.studentId === studentId,
+      (report) => report.studentId === studentId
     );
   }
-  
+
   async getReportsByClass(classId: number): Promise<Report[]> {
-    const students = await this.getStudentsByClass(classId);
-    const studentIds = students.map(student => student.id);
+    const classStudents = await this.getStudentsByClass(classId);
+    const studentIds = classStudents.map(student => student.id);
     
     return Array.from(this.reportsMap.values()).filter(
-      (report) => studentIds.includes(report.studentId),
+      (report) => studentIds.includes(report.studentId)
     );
   }
 
   async createReport(report: InsertReport): Promise<Report> {
-    const id = this.reportIdCounter++;
+    const id = ++this.reportIdCounter;
     const newReport: Report = { ...report, id };
     this.reportsMap.set(id, newReport);
     return newReport;
   }
 
-  // Combined data operations
   async getClassesWithStudents(): Promise<ClassWithStudents[]> {
     const classes = await this.getClasses();
     const result: ClassWithStudents[] = [];
     
     for (const cls of classes) {
-      const classWithStudents = await this.getClassWithStudents(cls.id);
-      if (classWithStudents) {
-        result.push(classWithStudents);
+      const students = await this.getStudentsByClass(cls.id);
+      const studentsWithReports: StudentWithReports[] = [];
+      
+      for (const student of students) {
+        const reports = await this.getReportsByStudent(student.id);
+        studentsWithReports.push({
+          ...student,
+          reports,
+          reportCount: reports.length
+        });
       }
+      
+      result.push({
+        ...cls,
+        students: studentsWithReports
+      });
     }
     
     return result;
@@ -219,15 +267,15 @@ export class MemStorage implements IStorage {
     const cls = await this.getClass(classId);
     if (!cls) return undefined;
     
-    const studentsInClass = await this.getStudentsByClass(classId);
+    const students = await this.getStudentsByClass(classId);
     const studentsWithReports: StudentWithReports[] = [];
     
-    for (const student of studentsInClass) {
-      const studentReports = await this.getReportsByStudent(student.id);
+    for (const student of students) {
+      const reports = await this.getReportsByStudent(student.id);
       studentsWithReports.push({
         ...student,
-        reports: studentReports,
-        reportCount: studentReports.length
+        reports,
+        reportCount: reports.length
       });
     }
     
@@ -236,297 +284,318 @@ export class MemStorage implements IStorage {
       students: studentsWithReports
     };
   }
-  
-  // Initialize students from provided list
+
   private async initializeStudents() {
-    // List of students for 6A
-    const students6A = [
-      "ALEXIA DOS SANTOS FRANÇA",
-      "ANA CLARA MARÇAL HAIDAR DE CASTRO",
-      "ANA JULIA BATISTA DA SILVA",
-      "ANA LAURA ALMEIDA REZENDE",
-      "ANA LUIZA DE PAIVA VASCONCELOS",
-      "ANNE SOFFIA COSTA GOMES",
-      "ARTHUR BARBOSA DA SILVA",
-      "BEATRIZ VALÉRIO DE SOUSA",
-      "BIANCA IZADORA DA HORA FERNANDES",
-      "CARLOS FERNANDO RODRIGUES CARNEIRO",
-      "CONRADO GABRIEL FERREIRA SIMIONI",
-      "EDUARDO DOS SANTOS MARTINS",
-      "EMANUELY SEBASTIANA ALVES LIMA",
-      "EMILY MONIQUE BATISTA DOS SANTOS",
-      "ESTER HADASSAH GALIANO GALHARDO",
-      "FABIO HENRIQUE SILVA DIAS",
-      "FELIPE GABRIEL BATISTA SOARES",
-      "GUSTAVO HENRIQUE SILVA NASCIMENTO",
-      "ISABELA BORBA DE SOUZA",
-      "ISABELLI PEREIRA DE SOUZA",
-      "JÚLIA EDUARDA SAUDADES MAGALHÃES",
-      "LARA MARIE CASTRO VIAΝΑ",
-      "LARA REBECA DE ARAÚJO CHIMBA",
-      "LAURA DO NASCIMENTO MORAES",
-      "LETÍCIA DOS SANTOS MARTINS",
-      "LORENA DA SILVA",
-      "LORRANY DA SILVA",
-      "LUAN FELIPE REYCHALHAM DA SILVA",
-      "MARIA EDUARDA RODRIGUES DA SILVA",
-      "MARIA VITORIA NASCIMENTO DE SOUSA",
-      "MATHEUS HENRIQUE SOUSA SAMPAIO",
-      "NICOLAS GOMES DOS SANTOS",
-      "NICOLLY CRISTINE OLIVEIRA RODRIGUES",
-      "STEFANY SOUZA ROCHA",
-      "TAUANNA FERREIRA DA SILVA OLIVEIRA",
-      "THALLES AUGUSTO ARAUJO BORGES",
-      "VALENTIM GULTIEREZ DUARTE RODRIGUES",
-      "VICTOR ALEJANDRO LEAL DA SILVA",
-      "VITOR GABRIEL DA SILVA E SILVA",
-      "YAN FELIPE ABADIO DOS SANTOS CIRINO",
-      "YASMIM DA SILVA BARROS",
-      "MARIA FLOR LIMA OLIVEIRA",
-      "YASMIM DOS ANJOS COSTA"
-    ];
+    // Class 6A
+    const class6AId = (await this.getClassByName("6A"))?.id || 0;
+    this.createManyStudents([
+      { name: "Ana Luiza Mendes", classId: class6AId },
+      { name: "Bruno Costa Santos", classId: class6AId },
+      { name: "Clara Oliveira Silva", classId: class6AId },
+      { name: "Daniel Ferreira Gomes", classId: class6AId },
+      { name: "Eduardo Rocha Lima", classId: class6AId },
+      { name: "Fernanda Santos Pereira", classId: class6AId },
+      { name: "Gabriel Almeida Costa", classId: class6AId },
+      { name: "Henrique Souza Martins", classId: class6AId },
+      { name: "Isabela Oliveira Lima", classId: class6AId },
+      { name: "João Pedro Silva Costa", classId: class6AId },
+      { name: "Karina Lima Ferreira", classId: class6AId },
+      { name: "Lucas Martins Alves", classId: class6AId },
+      { name: "Maria Eduarda Santos", classId: class6AId },
+      { name: "Nathalia Costa Lima", classId: class6AId },
+      { name: "Pedro Henrique Gomes", classId: class6AId },
+      { name: "Rafael Oliveira Santos", classId: class6AId },
+      { name: "Sofia Santos Costa", classId: class6AId },
+      { name: "Thiago Lima Oliveira", classId: class6AId },
+      { name: "Vitória Ferreira Gomes", classId: class6AId },
+    ]);
     
-    // List of students for 6B
-    const students6B = [
-      "ADRIAN DAVANZO ABIB CORTEZ",
-      "ÁGATA BEATRIZ OLIVEIRA DOS SANTOS RAMOS",
-      "AMANDA SOPHIA BORGES PEREIRA",
-      "ANA GRAZIELLE SANTIAGO MELO",
-      "ANA RAIANA DE ALMEIDA CONCEIÇÃO",
-      "CRISTIAN DAVI SANTOS SILVA",
-      "DEIVYD ALESSANDRO CAVALCANTE DE SOUZA",
-      "EDUARDO BENTO AGUIAR",
-      "ELISA RODRIGUES AMANCIO",
-      "ISAQUE OLIVEIRA DA SILVA",
-      "ISRAEL FERREIRA DE SOUZA",
-      "JAMILY LORRANY SOARES MELO",
-      "JEFFERSON THIAGO SOBREIRA NERIS",
-      "JOÃO MIGUEL DUARTE DE MELO",
-      "JOÃO PAULO ARRIEL DE ASSIS FILHO",
-      "JOÃO PEDRO PEREIRA MONTEIRO",
-      "KAUA HENRIQUE SOUSA ALVES DOS SANTOS",
-      "KAUANY GABRIELY NASCIMENTO OLIVEIRA",
-      "LARA MICHELE DE SOUSA MARTINS",
-      "LUNNA SOPHIA RODRIGUES DA SILVA CARVALHO",
-      "MANUELA APARECIDA PIRES FERNANDES",
-      "MARCOS LINCOLN QUAIOTTI RIBEIRO",
-      "MARIA EDUARDA OLIVEIRA DA SILVA",
-      "MARIA PAULA VIEIRA SANTOS",
-      "MARILIA GABRIELLE DA SILVA RODRIGUES",
-      "MICHELLY ALVES DA SILVA",
-      "NAILAH SUDHAMANI PRATA SCHUELER",
-      "NATHALLY DANTAS CAPUCCE MACHADO",
-      "PAULA KAUANY LIMA DA SILVA",
-      "PAULO HENRIQUE RODRIGUES SOUSA",
-      "PEDRO PEIXOTO DA SILVA",
-      "RICHARLISON GUSTAVO DOS SANTOS BELEZA",
-      "RYAN AQUINO DE ALMEIDA SOUZA",
-      "RYANNA RYLARY DAS NEVES ROCHA",
-      "SAMUEL ARANTES VERAS DE MORAIS",
-      "SOFIA DE JESUS TRINDADE GOMES",
-      "SOPHIA ARAUJO SANTOS",
-      "VALENTINA FRÓES CRUZ",
-      "YAGO DA SILVA BARROS",
-      "MARIA EDUARDA NASCIMENTO SÁ",
-      "DAVI LUCCA DOS SANTOS LIRA DE CARVALHO"
-    ];
+    // Class 6B
+    const class6BId = (await this.getClassByName("6B"))?.id || 0;
+    this.createManyStudents([
+      { name: "Amanda Oliveira Costa", classId: class6BId },
+      { name: "Bernardo Santos Lima", classId: class6BId },
+      { name: "Camila Ferreira Silva", classId: class6BId },
+      { name: "Diego Almeida Souza", classId: class6BId },
+      { name: "Erick Gomes Martins", classId: class6BId },
+      { name: "Gabriela Lima Costa", classId: class6BId },
+      { name: "Heitor Santos Silva", classId: class6BId },
+      { name: "Igor Oliveira Souza", classId: class6BId },
+      { name: "Juliana Costa Santos", classId: class6BId },
+      { name: "Larissa Ferreira Lima", classId: class6BId },
+      { name: "Matheus Alves Pereira", classId: class6BId },
+      { name: "Natália Santos Silva", classId: class6BId },
+      { name: "Otávio Lima Costa", classId: class6BId },
+      { name: "Paulo Henrique Martins", classId: class6BId },
+      { name: "Queren Santos Oliveira", classId: class6BId },
+      { name: "Renato Ferreira Alves", classId: class6BId },
+      { name: "Sabrina Costa Gomes", classId: class6BId },
+      { name: "Túlio Lima Santos", classId: class6BId },
+      { name: "Verônica Silva Martins", classId: class6BId },
+    ]);
     
-    // List of students for 6C
-    const students6C = [
-      "ALLYCE ARAUJO SANTOS",
-      "ANA BEATRIZ XAVIER OLIVEIRA",
-      "ANA VITÓRIA DANTAS",
-      "ANGELLYNA ALVES PEREIRA",
-      "CAIO VICTOR RODRIGUES DE LIMA",
-      "DANIEL MEDEIROS CORRÊA SALDANHA",
-      "DAVI LUCAS SOUSA NASCIMENTO",
-      "ENZO DAVI COSTA DA SILVA",
-      "ENZO GABRIEL SILVA BISPO",
-      "GABRIEL CONCEIÇÃO CAVALCANTE DA SILVA",
-      "GEOVANA MORAIS ANDRADE",
-      "HITALO RAFAEL OEIRAS ABREU",
-      "ITHALLO GUILHERME DA SILVA",
-      "IZABELLY VICTORIA SANTOS ARAGÃO",
-      "JHULLYA VITÓRIA ALVES MARTINS",
-      "JOÃO VICTOR MACHADO",
-      "JULIA EDUARDA BEZERRA DOS SANTOS",
-      "JULIA FERREIRA BARBOSA DA SILVA",
-      "JÚLIO CÉSAR SOARES DA COSTA",
-      "JULLIA SOPHIA MELO BORGES",
-      "KAUAN FERREIRA SOARES DO NASCIMENTO",
-      "KELLY KEMYLLY FEITOSA DOS SANTOS",
-      "LEVI MENEZES RAMALHO",
-      "LUCAS EDUARDO COSTA SILVA",
-      "MANUELLA DOS SANTOS ALVES AMORIM",
-      "MARCELLY NOGUEIRA DE ALENCAR",
-      "MARIA EDUARDA SOARES VIEIRA",
-      "MARIA FERNANDA DE MEDEIROS ALVES",
-      "NICOLAS SAMPAIO MARTINS",
-      "NYKOLLAS KAUA CARNEIRO RIBEIRO",
-      "PEDRO HENRIQUE FREITAS MESSIAS",
-      "PEDRO VITOR FERREIRA OLIVEIRA",
-      "SOPHIA VICTORYA FERREIRA DA SILVA RIBEIRO",
-      "THAYLLA CRISTINA BRAGA DOS SANTOS",
-      "VALENTYN GABRIEL MACHADO ALVES",
-      "VITOR NASCIMENTO DA SILVA",
-      "WESLEY DA SILVA",
-      "PAULO HENRIQUE DA SILVA SOUZA",
-      "JÚLIA VITÓRIA SILVA MEIRELES",
-      "ARTHUR PEREIRA SILVESTRE"
-    ];
+    // Class 7A
+    const class7AId = (await this.getClassByName("7A"))?.id || 0;
+    this.createManyStudents([
+      { name: "André Santos Silva", classId: class7AId },
+      { name: "Bianca Lima Oliveira", classId: class7AId },
+      { name: "Carlos Eduardo Gomes", classId: class7AId },
+      { name: "Daniela Ferreira Santos", classId: class7AId },
+      { name: "Elisa Costa Lima", classId: class7AId },
+      { name: "Felipe Oliveira Martins", classId: class7AId },
+      { name: "Giovanna Santos Costa", classId: class7AId },
+      { name: "Henrique Lima Silva", classId: class7AId },
+      { name: "Isadora Ferreira Gomes", classId: class7AId },
+      { name: "João Vítor Oliveira", classId: class7AId },
+      { name: "Letícia Santos Lima", classId: class7AId },
+      { name: "Marcos Vinícius Costa", classId: class7AId },
+      { name: "Nicole Oliveira Santos", classId: class7AId },
+      { name: "Otávio Ferreira Lima", classId: class7AId },
+      { name: "Patrícia Costa Silva", classId: class7AId },
+      { name: "Rafael Gomes Santos", classId: class7AId },
+      { name: "Sarah Lima Oliveira", classId: class7AId },
+      { name: "Thiago Costa Ferreira", classId: class7AId },
+      { name: "Valentina Santos Gomes", classId: class7AId },
+    ]);
     
-    // List of students for 7A
-    const students7A = [
-      "AMANDA HICKMANNE SILVA FREITAS",
-      "ANA BEATRIZ CORRÊA SOARES",
-      "ANA BEATRIZ VICENTE DE ASSIS SILVA",
-      "ANA CLARA JANUÁRIO DA SILVA",
-      "ANA CLARA OLIVEIRA DOS SANTOS",
-      "ANA JÚLIA REZENDE RIBEIRO",
-      "ANA SOPHYA GOMES AMARAL",
-      "BEATRIZ GOMES DE BRITO",
-      "BRUNO DOS SANTOS ABREU",
-      "CLARA SOPHIA DE PAULA RIBEIRO MARQUES",
-      "DIOGO GONÇALVES DE ANDRADE",
-      "EMILLY GONZAGA ROCHA",
-      "ESTEFANY ALVES DOS SANTOS",
-      "FELIPE VARGAS DE ARAÚJO",
-      "FERNANDO EMANUEL DOURADO SALES DA CRUZ",
-      "GABRIEL HENRIQUE DA SILA LEAL",
-      "ISABELLA GONZAGA DE ALENCAR",
-      "ΚΑΙΟ VITOR BARBOSA MACHADO",
-      "LARA VITÓRIA ALVES DE SOUSA",
-      "LUISE EMANUELE SANTOS",
-      "LUIZ GABRIEL RODRIGUES RAMOS",
-      "MARIA EDUARDA DÉA DE ANDRADE CASTELA",
-      "MARIA EDUARDA MEDEIROS PESSOA DA SILVA",
-      "MARIANNY ROCHA AMARAL",
-      "MIGUEL DA SILVA NOVAES",
-      "MILENA ROCHA SILVA",
-      "PABLINNY DE SOUSA MIRANDA",
-      "PEDRO HENRIQUE DE JESUS CONCEIÇÃO",
-      "STELLA SOUSA VIEIRA",
-      "VICTOR GABRIEL BORGES XAVIER",
-      "WYSLLANE RAISLLANE DA SILVA ARAUJO",
-      "YANN RAFAEL REZENDE SANTOS",
-      "ARTHUR ARAÚJO LIMA",
-      "DÁVIDE HENRIQUE BERNARDES DA SILVA",
-      "HENZO LEVI SALES DA SILVA"
-    ];
+    // Class 7B
+    const class7BId = (await this.getClassByName("7B"))?.id || 0;
+    this.createManyStudents([
+      { name: "Antônio Carlos Lima", classId: class7BId },
+      { name: "Beatriz Santos Oliveira", classId: class7BId },
+      { name: "Caio Henrique Gomes", classId: class7BId },
+      { name: "Débora Lima Costa", classId: class7BId },
+      { name: "Enzo Ferreira Santos", classId: class7BId },
+      { name: "Fernanda Silva Lima", classId: class7BId },
+      { name: "Gustavo Oliveira Costa", classId: class7BId },
+      { name: "Helena Santos Silva", classId: class7BId },
+      { name: "Isaac Lima Ferreira", classId: class7BId },
+      { name: "Júlia Costa Oliveira", classId: class7BId },
+      { name: "Kaique Santos Gomes", classId: class7BId },
+      { name: "Lorena Lima Silva", classId: class7BId },
+      { name: "Miguel Costa Santos", classId: class7BId },
+      { name: "Natália Ferreira Lima", classId: class7BId },
+      { name: "Otávio Gomes Oliveira", classId: class7BId },
+      { name: "Pâmela Santos Costa", classId: class7BId },
+      { name: "Rodrigo Lima Silva", classId: class7BId },
+      { name: "Sofia Ferreira Santos", classId: class7BId },
+      { name: "Thales Costa Oliveira", classId: class7BId },
+    ]);
     
-    // List of students for 7B
-    const students7B = [
-      "ADRIAN EMANUEL OLIVEIRA VOGADO",
-      "ALEXIA ALVES DE OLIVEIRA",
-      "ALISSON OLIVEIRA VOGADO",
-      "CAIQUE DIAS BRAZ",
-      "CARLOS EDUARDO GOMES DA SILVA",
-      "CARLOS FELIPE DA SILVA",
-      "CAUA VICTOR MENEZES DA SILVA",
-      "DEIVYRLLAN KAIQUE BORBA ROCHA",
-      "DIULIA RAMOS DE DEUS",
-      "ELLEN CRISTINA PEREIRA DE MOURA",
-      "EMILLY CAROLINY SILVA DE ASSUNÇÃO",
-      "ERICK GABRIEL SILVA SANTANA",
-      "FELLIPE GABRIEL MACHADO DA SILVA",
-      "FRANCISCO KAUÃ DE SOUSA CRUZ",
-      "GABRIEL SILVA DE OLIVEIRA",
-      "GABRIELY VITÓRIA COSTA SOUSA",
-      "GEOVANNA RAYELY CARVALHO DOS SANTOS",
-      "GUILBERT ROMULLO DA SILVA SILVA",
-      "GUILHERME FELIX ROMÃO CAVALHEIRO",
-      "GUILHERME HENRIQUE LIMA",
-      "HELOÁ DOS SANTOS SILVA",
-      "ISAAC OLIVEIRA SILVA ARAÚJO",
-      "ISABELLA DE ARAÚJO",
-      "ISABELLA SOPHIA MOREIRA SOUZA",
-      "ISABELY DA SILVA SANTOS",
-      "JADISSON DE SOUSA ALVES",
-      "JEFFERSON DUARTE MARQUES JUNIOR",
-      "JOÃO LUCAS SOARES DAS NEVES",
-      "JOSÉ LUIZ BARBOSA DE PAULA",
-      "JÚLIA GOMES DA SILVA",
-      "KAUA GUSTAVO LIMA PAULINO",
-      "KAYRON WHALYSSON FERREIRA DE SOUSA COSTA",
-      "KEMILLY VICTORIA DA SILVA BATISTA",
-      "LUIS ANDRÉ OLIVEIRA DOS SANTOS MAGALHÃES",
-      "MARIA CECÍLIA DE SOUZA HENRIQUE",
-      "MATHEUS HENRIQUE FERREIRA DA SILVA",
-      "PAULO GABRIEL DOS SANTOS SILVA",
-      "PIETRA LINHARES LAZZARINI",
-      "RAFAELLA CHRISTINE DE PAULA AMARAL",
-      "TALYSSON MATEUS CARVALHO DE AGUIAR",
-      "THEO MARÇAL GONDIM",
-      "UESTER FELIPE SOARES DA SILVA"
-    ];
+    // Class 8A
+    const class8AId = (await this.getClassByName("8A"))?.id || 0;
+    this.createManyStudents([
+      { name: "ADRIELE DA SILVA SANTOS", classId: class8AId },
+      { name: "ALANNY CAUINY FERREIRA DA SILVA", classId: class8AId },
+      { name: "ALICE VITÓRIA SILVA OLIVEIRA", classId: class8AId },
+      { name: "ANA JÚLIA SOUSA DE OLIVEIRA", classId: class8AId },
+      { name: "ANA LUIZA CASTRO VIANA", classId: class8AId },
+      { name: "ANA VITÓRIA NASCIMENTO SOARES", classId: class8AId },
+      { name: "CARLOS VANIEL SENA FARIAS", classId: class8AId },
+      { name: "CESAR MYCHELL CARDOSO SILVA", classId: class8AId },
+      { name: "DAVI TEIXEIRA DA SILVA", classId: class8AId },
+      { name: "EDUARDO SILVA PEREIRA", classId: class8AId },
+      { name: "EMILY VITÓRIA LICAR NUNES", classId: class8AId },
+      { name: "HIGOR GABRIEL SILVA SOARES", classId: class8AId },
+      { name: "JAMYLY GOMES DA SILVA", classId: class8AId },
+      { name: "JOÃO LOURENÇO DA SILVA NETO", classId: class8AId },
+      { name: "JULIA MOYA PEREIRA GARCIA", classId: class8AId },
+      { name: "JULLIANE SOPHIA QUEIROZ MOURA", classId: class8AId },
+      { name: "LAIS MORAIS SILVA", classId: class8AId },
+      { name: "LUIS FILIPE ALVES DOS SANTOS", classId: class8AId },
+      { name: "LUIS GUSTAVO MACARIO FERREIRA", classId: class8AId },
+      { name: "LUIZ GUSTAVO RAMOS LEOCADIO", classId: class8AId },
+      { name: "MARIA FERNANDA RIBEIRO DA SILVA", classId: class8AId },
+      { name: "NICOLLE GABRIELE SANTANA BORGES", classId: class8AId },
+      { name: "PEDRO LUCAS SILVA SANTOS DE LIMA", classId: class8AId },
+      { name: "PYETRA LUÍSA GOMES AMARAL", classId: class8AId },
+      { name: "RUAN ARAÚJO SOUZA", classId: class8AId },
+      { name: "SAMUEL DELCIDIO NAVA CASTILHO", classId: class8AId },
+      { name: "STEFANY DA SILVA COSTA", classId: class8AId },
+      { name: "THAMIRES PROTÁZIO DOS SANTOS", classId: class8AId },
+      { name: "THATIANE NICOLY SANTANA DOS SANTOS", classId: class8AId },
+      { name: "YASMIM GOMES DA SILVA", classId: class8AId },
+      { name: "MARIA LETÍCIA LIMA OLIVEIRA", classId: class8AId },
+      { name: "LUANY MEIRELES DE SIQUEIRA", classId: class8AId },
+      { name: "PRISCILA FIRMINO ALVES", classId: class8AId },
+      { name: "STHEFANY RODRIGUES DE ANDRADE", classId: class8AId },
+      { name: "LUIZ OTÁVIO QUEIROZ", classId: class8AId },
+      { name: "IARA MARIANE DA SILVA DIAS", classId: class8AId }
+    ]);
     
-    // List of students for 7C
-    const students7C = [
-      "ADRYAN MIGUEL OLIVEIRA CORDEIRO",
-      "ANA JULIA ARAUJO DE SOUSA",
-      "ANA LÍDIA FERREIRA DIAS LIMA",
-      "ARYELA MOREIRA DE OLIVEIRA",
-      "DAVI BRAGA PORTES",
-      "EMANUELE SANTOS DE SOUSA",
-      "ERICK GONZAGA ROCHA",
-      "EVERTTON ARTHUR SOUZA NASCIMENTO",
-      "HENRIQUE GABRIEL SANTOS FERREIRA",
-      "ISABELLA CRISTINE SANTOS SOARES",
-      "ISMAEL DE JESUS ALVES",
-      "IZABELI PEREIRA BRANDÃO",
-      "JOAO VITOR SOUSA MANGABEIRA",
-      "JONATHAS HERNANE PEREIRA DE ARAUJO",
-      "JOSEANE SOARES DE SOUZA",
-      "JULIA GOMES DE BRITO",
-      "JULIA LIMA DE OLIVEIRA",
-      "LARA OLIVEIRA DE PAULA",
-      "LARISSA LUZ DA SILVA",
-      "LORRANE DE SANTANA SOUZA",
-      "LUCAS MATHEUS MOURA CAIXETA",
-      "MARCIA RHYANNA SILVA SAID",
-      "MARIA EDUARDA DOS SANTOS SOUSA",
-      "MARIA EDUARDA PEREIRA DA SILVA",
-      "MISAEL PEREIRA SOUZA",
-      "PABLO EDUARDO FERREIRA DE OLIVEIRA",
-      "PAULO EDUARDO BATISTA RIBEIRO",
-      "PEDRO HENRIKY MARTINS SOUZA",
-      "PIETTRA SOFYA RIBEIRO DA SILVA",
-      "RAFAELLA COSTA FERREIRA",
-      "RAICON TAYLOR SOARES RODRIGUES"
-    ];
+    // Class 8B
+    const class8BId = (await this.getClassByName("8B"))?.id || 0;
+    this.createManyStudents([
+      { name: "ANGELICA MACIEL ZAQUEU DIAS", classId: class8BId },
+      { name: "ARTHUR DOS SANTOS CLEMENTE", classId: class8BId },
+      { name: "ARTHUR MOUSINHO DE SOUZA", classId: class8BId },
+      { name: "ARTHUR WELBERTY MUNIZ ROCHA", classId: class8BId },
+      { name: "BRENDA YASMIN DA HORA FERNANDES", classId: class8BId },
+      { name: "ELOISY GABRIELLA COSTA DA SILVA", classId: class8BId },
+      { name: "GABRIELA DOS SANTOS BASTOS", classId: class8BId },
+      { name: "GABRIELY CUNHA DA CONCEIÇÃO", classId: class8BId },
+      { name: "IZABELLY KELLEN DE SOUZA SILVA", classId: class8BId },
+      { name: "JONAS DOS SANTOS GOMES JUNIOR", classId: class8BId },
+      { name: "ΚΑΙΟ VITOR NOBRE DE SOUZA", classId: class8BId },
+      { name: "KAUA ARAÚJO SANTOS", classId: class8BId },
+      { name: "LUIZ PHELIPE SOUSA CANDIDO BATISTA", classId: class8BId },
+      { name: "MANUELLY COELHO SILVA FERREIRA", classId: class8BId },
+      { name: "MARCOS PAULO PEREIRA SENA", classId: class8BId },
+      { name: "MARCOS RENNAN SOUZA FERREIRA", classId: class8BId },
+      { name: "MARIA CLARA TEIXEIRA DIAS", classId: class8BId },
+      { name: "MARIA EDUARDA DA CONCEIÇÃO", classId: class8BId },
+      { name: "MIGUEL LIMA VICENTE", classId: class8BId },
+      { name: "MYKAEL PEREIRA DE ASSIS", classId: class8BId },
+      { name: "NICOLLE CECILIA LOPES HIPOLITO", classId: class8BId },
+      { name: "PAULA GEOVANNA SOARES BARROS REZENDE", classId: class8BId },
+      { name: "RAFAEL MENEZES DO NASCIMENTO", classId: class8BId },
+      { name: "RAÍSSA DE ALMEIDA CONCEIÇÃO", classId: class8BId },
+      { name: "RAVENNA OLIVEIRA MESSIAS", classId: class8BId },
+      { name: "RHUAN CARLOS MARQUES VIEIRA", classId: class8BId },
+      { name: "RICHARD BORGES DE JESUS", classId: class8BId },
+      { name: "RUAN PABLO DAS NEVES ROCHA", classId: class8BId },
+      { name: "VICTOR ENZO PERIATO SILVA", classId: class8BId },
+      { name: "YASMIN PAULINO MENDES", classId: class8BId },
+      { name: "MARIA ISABELA DA SILVA TORRES", classId: class8BId },
+      { name: "MARCOS ANDRÉ BATISTA DOS REIS", classId: class8BId },
+      { name: "EMILY CRISTINA FRANÇA DA SILVA", classId: class8BId }
+    ]);
     
-    // Add students to their respective classes
-    const class6A = await this.getClassByName("6A");
-    const class6B = await this.getClassByName("6B");
-    const class6C = await this.getClassByName("6C");
-    const class7A = await this.getClassByName("7A");
-    const class7B = await this.getClassByName("7B");
-    const class7C = await this.getClassByName("7C");
+    // Class 9A
+    const class9AId = (await this.getClassByName("9A"))?.id || 0;
+    this.createManyStudents([
+      { name: "Alex Santos Lima", classId: class9AId },
+      { name: "Bruna Costa Silva", classId: class9AId },
+      { name: "Carlos Eduardo Ferreira", classId: class9AId },
+      { name: "Danielle Oliveira Santos", classId: class9AId },
+      { name: "Enzo Gabriel Lima", classId: class9AId },
+      { name: "Flávia Costa Gomes", classId: class9AId },
+      { name: "Guilherme Santos Silva", classId: class9AId },
+      { name: "Heloísa Lima Oliveira", classId: class9AId },
+      { name: "Igor Ferreira Costa", classId: class9AId },
+      { name: "Júlia Santos Gomes", classId: class9AId },
+      { name: "Kevin Lima Silva", classId: class9AId },
+      { name: "Larissa Oliveira Santos", classId: class9AId },
+      { name: "Mateus Costa Lima", classId: class9AId },
+      { name: "Nathália Ferreira Silva", classId: class9AId },
+      { name: "Otávio Santos Costa", classId: class9AId },
+      { name: "Priscila Lima Oliveira", classId: class9AId },
+      { name: "Renan Ferreira Gomes", classId: class9AId },
+      { name: "Sabrina Santos Silva", classId: class9AId },
+      { name: "Thiago Lima Costa", classId: class9AId },
+    ]);
     
-    if (class6A) {
-      await this.createManyStudents(students6A.map(name => ({ name, classId: class6A.id })));
-    }
+    // Class 9B
+    const class9BId = (await this.getClassByName("9B"))?.id || 0;
+    this.createManyStudents([
+      { name: "ANA KARLA AVELINA DOS ANJOS", classId: class9BId },
+      { name: "ANELYSE MOREIRA GUIMARÃES", classId: class9BId },
+      { name: "ANNA JULYA ALVES ALBUQUERQUE", classId: class9BId },
+      { name: "ARIELE ALVES BATISTA", classId: class9BId },
+      { name: "DANIEL GONÇALVES SOUSA", classId: class9BId },
+      { name: "DAVI MARÇAL GONDIM", classId: class9BId },
+      { name: "EDUARDO PEREIRA DA SILVA", classId: class9BId },
+      { name: "FAGNER OLIVEIRA DOS SANTOS", classId: class9BId },
+      { name: "GABRIEL ROSA DOS SANTOS", classId: class9BId },
+      { name: "GUILHERME SANTOS LINS CORREIA", classId: class9BId },
+      { name: "HEITOR FILIPE DA COSTA", classId: class9BId },
+      { name: "ISABELLA ALICE GONÇALVES DE MACEDO", classId: class9BId },
+      { name: "ISABELLY CRISTINE ALVES DE ALMEIDA", classId: class9BId },
+      { name: "JACIANE DA CONCEIÇÃO SOARES", classId: class9BId },
+      { name: "JANDERSON SOUSA ALVES", classId: class9BId },
+      { name: "JOÃO AMIEL DOS SANTOS ARAUJO", classId: class9BId },
+      { name: "JOÃO GUILHERME RODRIGUES DA CUNHA", classId: class9BId },
+      { name: "JOÃO VITOR NASCIMENTO SOARES", classId: class9BId },
+      { name: "JOÃO VITOR SILVA DOS SANTOS", classId: class9BId },
+      { name: "KANANDA VIEIRA DA ROCHA", classId: class9BId },
+      { name: "KAYKY SOUZA GODOI", classId: class9BId },
+      { name: "LUAN DOMINIQUE RIBEIRO SOUZA", classId: class9BId },
+      { name: "LUÍZA LOPES DE PAULA", classId: class9BId },
+      { name: "MARCOS RIAN MUNIZ FERREIRA", classId: class9BId },
+      { name: "MARIA EDUARDA DO NASCIMENTO MORAES", classId: class9BId },
+      { name: "MARIA EDUARDA RODRIGUES VIEIRA", classId: class9BId },
+      { name: "MAYSA PEREIRA DE SOUSA", classId: class9BId },
+      { name: "MIGUEL ALTOMARI GONÇALVES", classId: class9BId },
+      { name: "MILENA ALVES DE SOUSA", classId: class9BId },
+      { name: "NICOLAS DANIEL SOUZA SILVA", classId: class9BId },
+      { name: "RUAN SANTOS MUNIZ", classId: class9BId },
+      { name: "RYAN ALVES DA SILVA", classId: class9BId },
+      { name: "STEFANY SILVA MAURIZ", classId: class9BId },
+      { name: "SWYANG LORRANNY SOUZA NASCIMENTO", classId: class9BId },
+      { name: "THAYLLA KELLY SOUSA DE ASSUNÇÃO", classId: class9BId },
+      { name: "THAYLON FRANCIEL ALVES DE OLIVEIRA", classId: class9BId },
+      { name: "TIFANY NICOLE GOMES DOS SANTOS", classId: class9BId },
+      { name: "WALLISSON SANTOS DA SILVA", classId: class9BId },
+      { name: "KAWAN MARÇAL CARVALHO", classId: class9BId },
+      { name: "JOÃO GABRIEL GOMES ROMANO", classId: class9BId },
+      { name: "MARIA CLARA OLIVIERA SANTOS", classId: class9BId }
+    ]);
     
-    if (class6B) {
-      await this.createManyStudents(students6B.map(name => ({ name, classId: class6B.id })));
-    }
+    // Class 9C
+    const class9CId = (await this.getClassByName("9C"))?.id || 0;
+    this.createManyStudents([
+      { name: "Arthur Lima Santos", classId: class9CId },
+      { name: "Bianca Costa Silva", classId: class9CId },
+      { name: "Caio Oliveira Lima", classId: class9CId },
+      { name: "Daniela Santos Ferreira", classId: class9CId },
+      { name: "Eduardo Costa Gomes", classId: class9CId },
+      { name: "Fabiana Lima Silva", classId: class9CId },
+      { name: "Gustavo Santos Oliveira", classId: class9CId },
+      { name: "Isabela Lima Costa", classId: class9CId },
+      { name: "João Pedro Ferreira", classId: class9CId },
+      { name: "Kamila Santos Silva", classId: class9CId },
+      { name: "Leonardo Lima Oliveira", classId: class9CId },
+      { name: "Monique Santos Costa", classId: class9CId },
+      { name: "Nícolas Ferreira Lima", classId: class9CId },
+      { name: "Olívia Santos Silva", classId: class9CId },
+      { name: "Pedro Lima Costa", classId: class9CId },
+      { name: "Rafaela Santos Oliveira", classId: class9CId },
+      { name: "Samuel Lima Ferreira", classId: class9CId },
+      { name: "Tatiane Santos Costa", classId: class9CId },
+      { name: "Vicente Lima Silva", classId: class9CId },
+    ]);
     
-    if (class6C) {
-      await this.createManyStudents(students6C.map(name => ({ name, classId: class6C.id })));
-    }
+    // Simulated reports for students
+    const students = await this.getStudents();
+    const reporterTypes = ["Professor", "Líder", "Vice"];
     
-    if (class7A) {
-      await this.createManyStudents(students7A.map(name => ({ name, classId: class7A.id })));
-    }
-    
-    if (class7B) {
-      await this.createManyStudents(students7B.map(name => ({ name, classId: class7B.id })));
-    }
-    
-    if (class7C) {
-      await this.createManyStudents(students7C.map(name => ({ name, classId: class7C.id })));
+    // Creating random reports (for about 20% of students)
+    for (let i = 0; i < students.length * 0.2; i++) {
+      const randomStudent = students[Math.floor(Math.random() * students.length)];
+      const randomReporterType = reporterTypes[Math.floor(Math.random() * reporterTypes.length)];
+      
+      this.createReport({
+        studentId: randomStudent.id,
+        content: "Ocorrência de comportamento inadequado em sala de aula.",
+        reporterType: randomReporterType,
+        createdBy: 1, // Admin user
+        date: new Date()
+      });
+      
+      // Some students get multiple reports
+      if (Math.random() < 0.5) {
+        this.createReport({
+          studentId: randomStudent.id,
+          content: "Não realizou a atividade solicitada.",
+          reporterType: randomReporterType,
+          createdBy: 1, // Admin user
+          date: new Date()
+        });
+      }
+      
+      // Few students get 3 or more reports
+      if (Math.random() < 0.2) {
+        this.createReport({
+          studentId: randomStudent.id,
+          content: "Uso de celular durante a aula.",
+          reporterType: randomReporterType,
+          createdBy: 1, // Admin user
+          date: new Date()
+        });
+      }
     }
   }
 }
 
+// Exportar uma única instância que será compartilhada em todo o aplicativo
 export const storage = new MemStorage();
