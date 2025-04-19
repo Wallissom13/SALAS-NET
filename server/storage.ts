@@ -90,6 +90,7 @@ export class DatabaseStorage implements IStorage {
           for (const student of students) {
             await this.deleteStudent(student.id);
           }
+          // Corrigido: Removendo usando o eq(column, value) para comparação
           await db.delete(classes).where(eq(classes.id, class9A.id));
         } catch (e) {
           console.error("Erro ao remover turma 9A:", e);
@@ -102,6 +103,7 @@ export class DatabaseStorage implements IStorage {
           for (const student of students) {
             await this.deleteStudent(student.id);
           }
+          // Corrigido: Removendo usando o eq(column, value) para comparação
           await db.delete(classes).where(eq(classes.id, class9C.id));
         } catch (e) {
           console.error("Erro ao remover turma 9C:", e);
@@ -110,7 +112,7 @@ export class DatabaseStorage implements IStorage {
       
       // Criar turmas se não existirem
       if (classes.length === 0) {
-        Promise.all([
+        await Promise.all([
           this.createClass({ name: "6A" }),
           this.createClass({ name: "6B" }),
           this.createClass({ name: "6C" }),
@@ -121,13 +123,25 @@ export class DatabaseStorage implements IStorage {
           this.createClass({ name: "8B" }),
           this.createClass({ name: "9B" })
         ]);
+        
+        // Se não existiam turmas, também inicializamos os alunos
+        await this.initializeStudents();
       } else {
         // Verificar turmas específicas e criar se não existirem
         const requiredClasses = ["6A", "6B", "6C", "7A", "7B", "7C", "8A", "8B", "9B"];
+        let createdNewClass = false;
+        
         for (const className of requiredClasses) {
           if (!classes.some(c => c.name === className)) {
             await this.createClass({ name: className });
+            createdNewClass = true;
           }
+        }
+        
+        // Verificar se existem alunos, se não, inicializar
+        const students = await this.getStudents();
+        if (students.length === 0 || createdNewClass) {
+          await this.initializeStudents();
         }
       }
     });
@@ -360,6 +374,30 @@ export class DatabaseStorage implements IStorage {
       { name: "Verônica Silva Martins", classId: class6BId },
     ]);
     
+    // Class 6C
+    const class6CId = (await this.getClassByName("6C"))?.id || 0;
+    this.createManyStudents([
+      { name: "Alexandre Souza Castro", classId: class6CId },
+      { name: "Beatriz Lima Fernandes", classId: class6CId },
+      { name: "Carolina Martins Silva", classId: class6CId },
+      { name: "Davi Oliveira Santos", classId: class6CId },
+      { name: "Eduarda Costa Almeida", classId: class6CId },
+      { name: "Felipe Lima Gomes", classId: class6CId },
+      { name: "Giovana Santos Oliveira", classId: class6CId },
+      { name: "Hugo Silva Martins", classId: class6CId },
+      { name: "Isabella Costa Ferreira", classId: class6CId },
+      { name: "João Miguel Lima", classId: class6CId },
+      { name: "Karla Oliveira Santos", classId: class6CId },
+      { name: "Leonardo Silva Costa", classId: class6CId },
+      { name: "Mariana Ferreira Lima", classId: class6CId },
+      { name: "Nathan Oliveira Martins", classId: class6CId },
+      { name: "Olivia Santos Silva", classId: class6CId },
+      { name: "Paulo Ricardo Ferreira", classId: class6CId },
+      { name: "Quezia Lima Oliveira", classId: class6CId },
+      { name: "Ricardo Santos Gomes", classId: class6CId },
+      { name: "Sophia Lima Castro", classId: class6CId },
+    ]);
+    
     // Class 7A
     const class7AId = (await this.getClassByName("7A"))?.id || 0;
     this.createManyStudents([
@@ -406,6 +444,30 @@ export class DatabaseStorage implements IStorage {
       { name: "Rodrigo Lima Silva", classId: class7BId },
       { name: "Sofia Ferreira Santos", classId: class7BId },
       { name: "Thales Costa Oliveira", classId: class7BId },
+    ]);
+    
+    // Class 7C
+    const class7CId = (await this.getClassByName("7C"))?.id || 0;
+    this.createManyStudents([
+      { name: "Arthur Silva Mendes", classId: class7CId },
+      { name: "Bruna Costa Oliveira", classId: class7CId },
+      { name: "Caio Ferreira Santos", classId: class7CId },
+      { name: "Diana Lima Gomes", classId: class7CId },
+      { name: "Enzo Gabriel Martins", classId: class7CId },
+      { name: "Fernanda Oliveira Costa", classId: class7CId },
+      { name: "Gustavo Santos Silva", classId: class7CId },
+      { name: "Helena Costa Ferreira", classId: class7CId },
+      { name: "Igor Lima Oliveira", classId: class7CId },
+      { name: "Júlia Santos Costa", classId: class7CId },
+      { name: "Kevin Lima Silva", classId: class7CId },
+      { name: "Laura Ferreira Santos", classId: class7CId },
+      { name: "Mateus Oliveira Lima", classId: class7CId },
+      { name: "Nicole Santos Silva", classId: class7CId },
+      { name: "Otávio Lima Costa", classId: class7CId },
+      { name: "Paula Ferreira Oliveira", classId: class7CId },
+      { name: "Richard Silva Santos", classId: class7CId },
+      { name: "Sabrina Lima Costa", classId: class7CId },
+      { name: "Thiago Oliveira Ferreira", classId: class7CId },
     ]);
     
     // Class 8A - Adicionando novos alunos da turma 8A
