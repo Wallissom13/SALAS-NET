@@ -124,8 +124,8 @@ export class DatabaseStorage implements IStorage {
           this.createClass({ name: "9B" })
         ]);
         
-        // Se não existiam turmas, também inicializamos os alunos
-        await this.initializeStudents();
+        // Não inicializar alunos automaticamente para permitir adição manual
+        console.log("Turmas criadas. Os alunos serão adicionados manualmente pelo administrador.");
       } else {
         // Verificar turmas específicas e criar se não existirem
         const requiredClasses = ["6A", "6B", "6C", "7A", "7B", "7C", "8A", "8B", "9B"];
@@ -138,10 +138,9 @@ export class DatabaseStorage implements IStorage {
           }
         }
         
-        // Verificar se existem alunos, se não, inicializar
-        const students = await this.getStudents();
-        if (students.length === 0 || createdNewClass) {
-          await this.initializeStudents();
+        // Não inicializar alunos automaticamente
+        if (createdNewClass) {
+          console.log("Novas turmas criadas. Os alunos serão adicionados manualmente pelo administrador.");
         }
       }
     });
