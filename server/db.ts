@@ -1,14 +1,12 @@
-import { Pool, neonConfig } from '@neondatabase/serverless';
-import { drizzle } from 'drizzle-orm/neon-serverless';
-import ws from "ws";
+import pkg from 'pg';
+const { Pool } = pkg;
+import { drizzle } from 'drizzle-orm/node-postgres';
 import * as schema from "@shared/schema";
-
-neonConfig.webSocketConstructor = ws;
 
 // Verificar se DATABASE_URL está definido
 if (!process.env.DATABASE_URL) {
-  console.error("DATABASE_URL não está definido. Usando SQLite em memória como fallback.");
-  process.env.DATABASE_URL = "postgres://postgres:postgres@localhost:5432/postgres";
+  console.error("DATABASE_URL não está definido.");
+  process.exit(1);
 }
 
 // Configurar a conexão com o banco de dados com suporte a SSL para o Render
@@ -27,4 +25,4 @@ pool.on('error', (err) => {
 });
 
 // Inicializar o drizzle com o pool
-export const db = drizzle({ client: pool, schema });
+export const db = drizzle(pool, { schema });
