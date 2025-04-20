@@ -52,16 +52,32 @@ export class DatabaseStorage implements IStorage {
       checkPeriod: 86400000 // Limpar sessões expiradas uma vez por dia
     });
     
-    // Verificar se já existe um usuário admin, se não, criar um
-    this.getUserByUsername("Wallisson10").then(user => {
-      if (!user) {
-        this.createUser({
-          username: "Wallisson10",
-          password: "CEPI10",
-          isAdmin: true
-        });
+    // Verificar e criar usuários padrão
+    this.initDefaultUsers();
+  }
+
+  // Método para inicializar usuários padrão
+  async initDefaultUsers() {
+    console.log("Inicializando usuários padrão...");
+    
+    const defaultUsers = [
+      { username: "Wallisson10", password: "CEPI10", isAdmin: true },
+      { username: "HENAN10", password: "CEPI10", isAdmin: true },
+      { username: "PROFESSOR10", password: "CEPI10", isAdmin: false },
+      { username: "LIDERES10", password: "CEPI10", isAdmin: false },
+      { username: "ELIESIA10", password: "CEPI10", isAdmin: true },
+      { username: "CEPI10", password: "CEPI10", isAdmin: true }
+    ];
+    
+    for (const userData of defaultUsers) {
+      const existingUser = await this.getUserByUsername(userData.username);
+      if (!existingUser) {
+        console.log(`Criando usuário: ${userData.username}`);
+        await this.createUser(userData);
+      } else {
+        console.log(`Usuário já existe: ${userData.username}`);
       }
-    });
+    }
     
     // Verificar se já existem turmas, se não, criar as turmas necessárias
     this.getClasses().then(async classes => {

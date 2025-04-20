@@ -1,9 +1,10 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
-import { storage } from "./storage";
+import { storage, DatabaseStorage } from "./storage";
 import { setupAuth } from "./auth";
 import { z } from "zod";
-import { insertClassSchema, insertStudentSchema, insertReportSchema } from "@shared/schema";
+import { insertClassSchema, insertStudentSchema, insertReportSchema, users } from "@shared/schema";
+import { db } from "./db";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Setup authentication routes
