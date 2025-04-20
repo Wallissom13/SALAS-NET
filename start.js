@@ -1,45 +1,73 @@
-// Script de inicialização para o Render
-const path = require('path');
-const { spawn } = require('child_process');
+// Este script é usado para garantir que o 'npm start' funcione tanto no ambiente de desenvolvimento quanto em produção
 
-// Função para executar um comando npm
+// Módulos necessários
+import { exec } from 'child_process';
+import { fileURLToPath } from 'url';
+import path from 'path';
+import fs from 'fs';
+
+// Configura caminhos baseados no diretório atual
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Verifica se estamos em ambiente de produção (Render) ou desenvolvimento
+const isProduction = process.env.NODE_ENV === 'production';
+
+// Função para executar comandos npm
 function runNpmCommand(command) {
   return new Promise((resolve, reject) => {
-    console.log(`Executando: npm ${command}`);
+    console.log(`Executando: ${command}`);
     
-    const child = spawn('npm', [command], { 
-      stdio: 'inherit',
-      shell: true 
-    });
+    const process = exec(command, { cwd: __dirname });
     
-    child.on('close', (code) => {
-      if (code !== 0) {
-        reject(new Error(`Comando 'npm ${command}' falhou com código ${code}`));
-        return;
+    process.stdout.on('data', (data) => console.log(data.toString()));
+    process.stderr.on('data', (data) => console.error(data.toString()));
+    
+    process.on('exit', (code) => {
+      if (code === 0) {
+        resolve();
+      } else {
+        reject(new Error(`Falha ao executar: ${command}`));
       }
-      resolve();
     });
   });
 }
 
-// Função para executar o servidor compilado
-function runServer() {
-  console.log('Iniciando o servidor...');
-  
-  // Se estamos no ambiente do Render, vamos usar o node para executar o arquivo compilado
+// Função para iniciar o servidor
+async function runServer() {
   try {
-    if (process.env.NODE_ENV === 'production') {
-      // Execução direta com o Node
-      require('./dist/index.js');
+    if (isProduction) {
+      // Verifica se DATABASE_URL está configurado
+      if (!process.env.DATABASE_URL) {
+        console.error('\x1b[31m%s\x1b[0m', 'ERRO: Variável de ambiente DATABASE_URL não está definida');
+        console.error('\x1b[33m%s\x1b[0m', 'No Render: Configure DATABASE_URL nas variáveis de ambiente do serviço');
+        console.error('\x1b[33m%s\x1b[0m', 'Para desenvolvimento: Adicione DATABASE_URL=... no arquivo .env');
+        process.exit(1);
+      }
+      
+      console.log('\x1b[36m%s\x1b[0m', 'Iniciando em modo de produção...');
+      
+      // Verifica se o diretório dist existe
+      if (!fs.existsSync(path.join(__dirname, 'dist'))) {
+        console.log('\x1b[33m%s\x1b[0m', 'Diretório dist não encontrado, executando build...');
+        await runNpmCommand('npm run build');
+      }
+      
+      // Inicia o servidor de produção
+      await runNpmCommand('NODE_ENV=production node dist/index.js');
     } else {
-      // Durante desenvolvimento, usar tsx para execução
-      require('tsx')('server/index.ts');
+      // Ambiente de desenvolvimento
+      console.log('\x1b[36m%s\x1b[0m', 'Iniciando em modo de desenvolvimento...');
+      await runNpmCommand('NODE_ENV=development tsx server/index.ts');
     }
   } catch (error) {
-    console.error('Erro ao iniciar o servidor:', error);
+    console.error('\x1b[31m%s\x1b[0m', `Erro ao iniciar o servidor: ${error.message}`);
     process.exit(1);
   }
 }
 
-// Iniciar o servidor
-runServer();
+// Inicia a execução
+runServer().catch(err => {
+  console.error('\x1b[31m%s\x1b[0m', `Erro fatal: ${err.message}`);
+  process.exit(1);
+});

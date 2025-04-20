@@ -69,30 +69,27 @@ export class DatabaseStorage implements IStorage {
       const class9A = classes.find(c => c.name === "9A");
       const class9C = classes.find(c => c.name === "9C");
       
-      if (class9A) {
-        try {
-          const students = await this.getStudentsByClass(class9A.id);
-          for (const student of students) {
-            await this.deleteStudent(student.id);
+      // Remover turmas específicas (quando necessário)
+      const removerTurmas = async (turma) => {
+        if (turma) {
+          try {
+            const studentsInClass = await this.getStudentsByClass(turma.id);
+            for (const student of studentsInClass) {
+              await this.deleteStudent(student.id);
+            }
+            // Remove a turma do banco de dados
+            await db.delete(classes).where(eq(classes.id, turma.id));
+            console.log(`Turma ${turma.name} removida com sucesso`);
+          } catch (e) {
+            console.error(`Erro ao remover turma ${turma.name}:`, e);
           }
-          // Removendo a turma 9A
-          await db.delete(classes).where(eq(classes.id, class9A.id));
-        } catch (e) {
-          console.error("Erro ao remover turma 9A:", e);
         }
-      }
+      };
       
-      if (class9C) {
-        try {
-          const students = await this.getStudentsByClass(class9C.id);
-          for (const student of students) {
-            await this.deleteStudent(student.id);
-          }
-          // Removendo a turma 9C
-          await db.delete(classes).where(eq(classes.id, class9C.id));
-        } catch (e) {
-          console.error("Erro ao remover turma 9C:", e);
-        }
+      // Remover turmas 9A e 9C quando presentes
+      if (class9A || class9C) {
+        if (class9A) await removerTurmas(class9A);
+        if (class9C) await removerTurmas(class9C);
       }
       
       // Criar turmas se não existirem
