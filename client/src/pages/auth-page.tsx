@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { useLocation } from "wouter";
 import { z } from "zod";
@@ -15,8 +15,10 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { Loader2 } from "lucide-react";
+import { Loader2, RefreshCw } from "lucide-react";
 import { Logo } from "@/components/logo";
+import { apiRequest } from "@/lib/queryClient";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 const loginSchema = z.object({
   username: z.string().min(1, "O nome de usuário é obrigatório"),
@@ -28,6 +30,23 @@ type LoginFormData = z.infer<typeof loginSchema>;
 export default function AuthPage() {
   const [, setLocation] = useLocation();
   const { user, loginMutation } = useAuth();
+  const [setupStatus, setSetupStatus] = useState<string | null>(null);
+  const [isSettingUp, setIsSettingUp] = useState(false);
+
+  // Inicialização do banco de dados
+  const initializeDatabase = async () => {
+    try {
+      setIsSettingUp(true);
+      const response = await apiRequest("GET", "/api/setup");
+      const data = await response.json();
+      setSetupStatus(`Sistema inicializado com sucesso. Usuários disponíveis: ${data.stats.usernames.join(", ")}`);
+    } catch (error) {
+      setSetupStatus("Erro ao inicializar banco de dados. Tente novamente.");
+      console.error("Erro ao inicializar:", error);
+    } finally {
+      setIsSettingUp(false);
+    }
+  };
 
   // Use useEffect for redirection to avoid calling hooks conditionally
   useEffect(() => {
@@ -150,12 +169,40 @@ export default function AuthPage() {
                 </form>
               </Form>
               
+              {setupStatus && (
+                <Alert className="mt-4 border-blue-500 bg-blue-50">
+                  <AlertDescription className="text-blue-800 text-sm">
+                    {setupStatus}
+                  </AlertDescription>
+                </Alert>
+              )}
+              
               <div className="mt-6 text-center text-sm text-gray-600">
                 <p className="flex items-center justify-center">
                   <span className="inline-block w-1 h-1 rounded-full bg-gray-400 mr-1"></span>
                   Em caso de problemas com o acesso, contate a administração.
                   <span className="inline-block w-1 h-1 rounded-full bg-gray-400 ml-1"></span>
                 </p>
+                
+                <Button 
+                  variant="outline"
+                  size="sm"
+                  onClick={initializeDatabase} 
+                  disabled={isSettingUp}
+                  className="mt-4 text-xs flex items-center mx-auto"
+                >
+                  {isSettingUp ? (
+                    <>
+                      <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+                      Inicializando...
+                    </>
+                  ) : (
+                    <>
+                      <RefreshCw className="mr-1 h-3 w-3" />
+                      Inicializar usuários padrão
+                    </>
+                  )}
+                </Button>
               </div>
             </CardContent>
           </Card>

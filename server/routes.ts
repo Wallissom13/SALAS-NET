@@ -7,6 +7,35 @@ import { insertClassSchema, insertStudentSchema, insertReportSchema, users } fro
 import { db } from "./db";
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Rota especial para inicializar o banco de dados
+  // Útil após o deploy para garantir que tudo esteja configurado
+  app.get("/api/setup", async (req, res) => {
+    try {
+      console.log("Inicializando banco de dados...");
+      
+      // Forçar a inicialização de usuários padrão
+      await (storage as DatabaseStorage).initDefaultUsers();
+      
+      // Verificar usuários criados
+      const usersList = await db.select().from(users);
+      
+      res.json({
+        success: true,
+        message: "Banco de dados inicializado com sucesso",
+        stats: {
+          users: usersList.length,
+          usernames: usersList.map(u => u.username)
+        }
+      });
+    } catch (error) {
+      console.error("Erro ao inicializar banco de dados:", error);
+      res.status(500).json({
+        success: false,
+        error: String(error)
+      });
+    }
+  });
+  
   // Setup authentication routes
   setupAuth(app);
   
@@ -262,13 +291,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
     
     try {
-      const users = Array.from((storage as any).usersMap.values()).map(user => {
+      // Buscar usuários diretamente do banco de dados
+      const allUsers = await db.select().from(users);
+      
+      // Remover senhas para segurança
+      const safeUsers = allUsers.map(user => {
         const { password, ...userWithoutPassword } = user;
         return userWithoutPassword;
       });
       
-      res.json(users);
+      res.json(safeUsers);
     } catch (error) {
+      console.error("Erro ao buscar usuários:", error);
       res.status(500).send("Erro ao buscar usuários");
     }
   });
